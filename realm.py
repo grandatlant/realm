@@ -1,45 +1,57 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S python3
 # -*- coding=utf-8 -*-
 """
 Realm changing module for World of Warcraft
 """
 
-import sys
-
-DEBUG = True
-
 VERSION = '0.0.1'
-DEF_SETS_FILENAME = 'realm.json'
+DEF_SETTINGS_FILENAME = './realm.json'
 DEF_REALMLIST_FILENAME = '../Data/enUS/realmlist.wtf'
 
-def load_settings(filename):
-    if DEBUG: print('load_settings('+filename+')')
-    return filename
+from argparse import ArgumentParser, Namespace
 
-def parse_cli_args(args_list=None, ns=None):
+def _list(args):
+    pass
 
-    from argparse import ArgumentParser
+def _add(args):
+    pass
+
+def _use(args):
+    pass
+
+def _show(args):
+    pass
+
+def _hide(args):
+    pass
+
+def _remove(args):
+    pass
+
+def _parse_cli_args(args:list = None, namespace = None) -> Namespace:
     
     parser = ArgumentParser(description=__doc__,
                             allow_abbrev=False,
                             epilog='Copyright (C) 2025 grandatlant')
+    parser.set_defaults(func=print)
     parser.add_argument('--version',
                         action='version',
                         version='%(prog)s '+VERSION)
     parser.add_argument('-v','--verbose',
+                        dest='verbosity',
                         action='count',
                         default=0,
                         help='increase verbosity level. Quiet by default')
     parser.add_argument('-s','--settings',
                         default='',
                         help='use settings from .json file. File "'
-                        +DEF_SETS_FILENAME+'" is used as default')
-    
+                        +DEF_SETTINGS_FILENAME+'" is used as default')
     ## COMMANDS
     subs = parser.add_subparsers(title='Commands',
+                                 dest='command',
                                  description='main settings controlling interface')
     # List
-    command = subs.add_parser('list',aliases=['ls'],
+    command = subs.add_parser('list',
                               help='list all realms')
     command.add_argument('-l','--long',
                          action='store_true', default=False,
@@ -51,9 +63,9 @@ def parse_cli_args(args_list=None, ns=None):
     cmdgroup.add_argument('--hidden',
                           action='store_true', default=False,
                           help='list hidden realms')
-    command.set_defaults(command='list')
+    command.set_defaults(func=_list)
     # Add
-    command = subs.add_parser('add',aliases=['new'],
+    command = subs.add_parser('add',
                               help='add new realm')
     command.add_argument('-n','--name',
                          #nargs='?',
@@ -64,55 +76,72 @@ def parse_cli_args(args_list=None, ns=None):
                          nargs='*',
                          help='strings for realmlist.wtf file. '
                          'Asked from standard input if omit')
-    command.set_defaults(command='add')
+    command.set_defaults(func=_add)
     # Use
-    command = subs.add_parser('use',aliases=['check'],
+    command = subs.add_parser('use',
                               help='use realm by its name')
     command.add_argument('name',
-                         nargs='?',
+                         nargs=1,
                          default='',
                          help='name of chosen realm. '
-                         'Use "%(prog)s list" to choose')
-    command.set_defaults(command='use')
+                         'Use "list" to choose')
+    command.set_defaults(func=_use)
     # Show
-    command = subs.add_parser('show',aliases=['on'],
+    command = subs.add_parser('show',
                               help='show hidden realm')
-    command.add_argument('name',
-                         nargs='?',
+    command.add_argument('names',
+                         nargs='+',
                          default='',
                          help='name of hidden realm to show. '
-                         'Use "%(prog)s list -a|-h" to choose')
-    command.set_defaults(command='show')
+                         'Use "list" to choose')
+    command.set_defaults(func=_show)
     # Hide
-    command = subs.add_parser('hide',aliases=['off'],
+    command = subs.add_parser('hide',
                               help='hide realm from sight')
-    command.add_argument('name',
-                         nargs='?',
+    command.add_argument('names',
+                         nargs='+',
                          default='',
                          help='name of realm to hide. '
-                         'Use "%(prog)s list" to choose')
-    command.set_defaults(command='hide')
+                         'Use "list" to choose')
+    command.set_defaults(func=_hide)
     # Remove
-    command = subs.add_parser('remove',aliases=['rm'],
+    command = subs.add_parser('remove',
                               help='remove realm by its name')
-    command.add_argument('name',
-                         nargs='?',
+    command.add_argument('-f', '--force',
+                         action='store_true', default=False,
+                         help='force deletion operation, never prompt')
+    command.add_argument('names',
+                         nargs='+',
                          default='',
-                         help='name of realm to permanently delete.'
-                         'Use "%(prog)s list [-a|-h]" to choose')
-    command.set_defaults(command='remove')
+                         help='name of realm to permanently delete. '
+                         'Use "list" to choose')
+    command.set_defaults(func=_remove)
 
-    args = parser.parse_args(args_list, ns)
-    if not hasattr(args, 'command'):
-        parser.error('No command specified')
-        
-    return args
+    return parser.parse_args(args=args, namespace=namespace)
+
+
+##    MAIN    ##
+def _main(argv:list = None) -> int:
+
+    args = None if argv is None else argv[1:]
+    args = _parse_cli_args(args)
+    
+    if args.verbosity > 2:
+        print('Argv to _main():', argv)
+        print('Parsed args:', vars(args))
+    
+    result = 0
+    if args.command is not None or args.verbosity > 1:
+        try:
+            result = args.func(args)
+        except AttributeError:
+            result = 1
+    return 0 if result is None else result
+
+def main(argv:list = None) -> int:
+    """ Exported main function wrapper """
+    return _main(argv)
 
 if __name__ == '__main__':
-
-    args = parse_cli_args()
-    if DEBUG: print('Parsed args:', args)
-
-    if DEBUG or args.settings:
-        settings = load_settings(args.settings)
-        if args.verbose: print('Loaded settings:', settings)
+    import sys
+    sys.exit(_main(sys.argv))
