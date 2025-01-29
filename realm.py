@@ -8,7 +8,17 @@ VERSION = '0.0.1'
 DEF_SETTINGS_FILENAME = './realm.json'
 DEF_REALMLIST_FILENAME = '../Data/enUS/realmlist.wtf'
 
+import sys
 from argparse import ArgumentParser, Namespace
+
+class RealmSettings:
+    """ Container for script saved settings """
+    def __init__():
+        pass
+    def load():
+        pass
+    def save():
+        pass
 
 def _list(args):
     pass
@@ -28,7 +38,7 @@ def _hide(args):
 def _remove(args):
     pass
 
-def _parse_cli_args(args:list = None, namespace = None) -> Namespace:
+def _parse_cli_args(args: list = None, namespace = None) -> Namespace:
     
     parser = ArgumentParser(description=__doc__,
                             allow_abbrev=False,
@@ -36,7 +46,7 @@ def _parse_cli_args(args:list = None, namespace = None) -> Namespace:
     parser.set_defaults(func=print)
     parser.add_argument('--version',
                         action='version',
-                        version='%(prog)s '+VERSION)
+                        version=f'%(prog)s {VERSION}')
     parser.add_argument('-v','--verbose',
                         dest='verbosity',
                         action='count',
@@ -44,12 +54,12 @@ def _parse_cli_args(args:list = None, namespace = None) -> Namespace:
                         help='increase verbosity level. Quiet by default')
     parser.add_argument('-s','--settings',
                         default='',
-                        help='use settings from .json file. File "'
-                        +DEF_SETTINGS_FILENAME+'" is used as default')
+                        help='use settings from .json file. '
+                        f'File "{DEF_SETTINGS_FILENAME}" is used as default')
     ## COMMANDS
     subs = parser.add_subparsers(title='Commands',
                                  dest='command',
-                                 description='main settings controlling interface')
+                                 description='main settings interface')
     # List
     command = subs.add_parser('list',
                               help='list all realms')
@@ -123,25 +133,23 @@ def _parse_cli_args(args:list = None, namespace = None) -> Namespace:
 ##    MAIN    ##
 def _main(argv:list = None) -> int:
 
-    args = None if argv is None else argv[1:]
-    args = _parse_cli_args(args)
+    args = _parse_cli_args(argv[1:] if argv else None)
     
     if args.verbosity > 2:
         print('Argv to _main():', argv)
         print('Parsed args:', vars(args))
     
     result = 0
-    if args.command is not None or args.verbosity > 1:
+    if args.command or args.verbosity > 1:
         try:
             result = args.func(args)
         except AttributeError:
             result = 1
-    return 0 if result is None else result
+    return result if result is not None else 0
 
 def main(argv:list = None) -> int:
     """ Exported main function wrapper """
     return _main(argv)
 
 if __name__ == '__main__':
-    import sys
     sys.exit(_main(sys.argv))
