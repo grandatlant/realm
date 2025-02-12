@@ -10,16 +10,43 @@ DEF_REALMLIST_FILENAME = '../Data/enUS/realmlist.wtf'
 
 import sys
 from argparse import ArgumentParser, Namespace
+from clitools import readlines
 
-class RealmSettings:
+class RealmEntry(dict):
+    pass
+
+class RealmCollection(list):
+    def __init__(self, iterable = ()):
+        super().__init__(iterable)
+
+class BaseSettings:
+    def __init__(self,
+                 filename: str = '',/):
+        self._filename = filename if filename else DEF_SETTINGS_FILENAME
+        self._realms = RealmCollection()
+
+class RealmSettings(BaseSettings):
     """ Container for script saved settings """
-    def __init__():
+    def __init__(self, filename: str = '', *args, **kwargs):
+        super().__init__(filename)
+        if filename:
+            self._filename = filename
+        for attr in kwargs:
+            if hasattr(self, attr):
+                # No any changes for attributes already exists
+                #raise AttributeError
+                pass
+            else:
+                setattr(self, attr, kwargs[attr])
+    def load(self):
+        """ Loads settings from file """
         pass
-    def load():
-        pass
-    def save():
+    def save(self):
+        """ Saves settings to file """
         pass
 
+
+##  CLI stateless subroutines  ##
 def _list(args):
     pass
 
@@ -43,7 +70,9 @@ def _parse_cli_args(args: list = None, namespace = None) -> Namespace:
     parser = ArgumentParser(description=__doc__,
                             allow_abbrev=False,
                             epilog='Copyright (C) 2025 grandatlant')
+    # default debug/verbose action - function 'print()'
     parser.set_defaults(func=print)
+    
     parser.add_argument('--version',
                         action='version',
                         version=f'%(prog)s {VERSION}')
@@ -144,11 +173,13 @@ def _main(argv:list = None) -> int:
         try:
             result = args.func(args)
         except AttributeError:
+            # assume func is absent for command
             result = 1
     return result if result is not None else 0
 
 def main(argv:list = None) -> int:
     """ Exported main function wrapper """
+    raise ImportError('main() is not ready to call yet while imported')
     return _main(argv)
 
 if __name__ == '__main__':
