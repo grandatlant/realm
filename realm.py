@@ -12,39 +12,8 @@ import sys
 from argparse import ArgumentParser, Namespace
 from clitools import readlines
 
-class RealmEntry(dict):
-    pass
-
-class RealmCollection(list):
-    def __init__(self, iterable = ()):
-        super().__init__(iterable)
-
-class BaseSettings:
-    def __init__(self,
-                 filename: str = '',/):
-        self._filename = filename if filename else DEF_SETTINGS_FILENAME
-        self._realms = RealmCollection()
-
-class RealmSettings(BaseSettings):
-    """ Container for script saved settings """
-    def __init__(self, filename: str = '', *args, **kwargs):
-        super().__init__(filename)
-        if filename:
-            self._filename = filename
-        for attr in kwargs:
-            if hasattr(self, attr):
-                # No any changes for attributes already exists
-                #raise AttributeError
-                pass
-            else:
-                setattr(self, attr, kwargs[attr])
-    def load(self):
-        """ Loads settings from file """
-        pass
-    def save(self):
-        """ Saves settings to file """
-        pass
-
+# Realm control classes
+from classes import *
 
 ##  CLI stateless subroutines  ##
 def _list(args):
@@ -80,7 +49,7 @@ def _parse_cli_args(args: list = None, namespace = None) -> Namespace:
                         dest='verbosity',
                         action='count',
                         default=0,
-                        help='increase verbosity level. Quiet by default')
+                        help='increase verbosity level. Quiet by default.')
     parser.add_argument('-s','--settings',
                         default='',
                         help='use settings from .json file. '
@@ -160,12 +129,12 @@ def _parse_cli_args(args: list = None, namespace = None) -> Namespace:
 
 
 ##    MAIN    ##
-def _main(argv:list = None) -> int:
+def _main() -> int:
 
-    args = _parse_cli_args(argv[1:] if argv else None)
+    args = _parse_cli_args()
     
     if args.verbosity > 2:
-        print('Argv to _main():', argv)
+        print(f'sys.argv = {sys.argv}')
         print('Parsed args:', vars(args))
     
     result = 0
@@ -177,10 +146,5 @@ def _main(argv:list = None) -> int:
             result = 1
     return result if result is not None else 0
 
-def main(argv:list = None) -> int:
-    """ Exported main function wrapper """
-    raise ImportError('main() is not ready to call yet while imported')
-    return _main(argv)
-
 if __name__ == '__main__':
-    sys.exit(_main(sys.argv))
+    print(_main())
