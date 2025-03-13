@@ -8,17 +8,64 @@ optional arguments:
   --version             show program's version number and exit
   -v, --verbose         increase verbosity level. Quiet by default.
   -s SETTINGS, --settings SETTINGS
-                        use settings from .json file. File "./realm.json" is
+                        use settings from a .json file. File "realm.json" is
                         used as default
 
 Commands:
   main settings interface
 
   {list,add,use,show,hide,remove}
-    list                list all realms
-    add                 add new realm
-    use                 use realm by its name
-    show                show hidden realm
-    hide                hide realm from sight
-    remove              remove realm by its name
+    list                list realms
+    add                 add new realm or change existing
+    use                 use realm by name
+    show                show hidden realms
+    hide                hide realms
+    remove              remove realms
 
+Copyright (C) 2025 grandatlant
+usage: realm.py list [-h] [-l] [--all | --hidden]
+
+optional arguments:
+  -h, --help  show this help message and exit
+  -l, --long  list full information, not only names
+  --all       list all realms, including hidden
+  --hidden    list hidden realms only
+usage: realm.py add [-h] [-f] name [strings [strings ...]]
+
+positional arguments:
+  name         name for new or existing realm to add or change.
+  strings      strings for realmlist.wtf file. Asked from standard input if
+               omit
+
+optional arguments:
+  -h, --help   show this help message and exit
+  -f, --force  force change existing realm, no prompt
+usage: realm.py use [-h] name
+
+positional arguments:
+  name        name of chosen realm. Use "list" to choose
+
+optional arguments:
+  -h, --help  show this help message and exit
+usage: realm.py show [-h] names [names ...]
+
+positional arguments:
+  names       name of hidden realm to show. Use "list" to choose
+
+optional arguments:
+  -h, --help  show this help message and exit
+usage: realm.py hide [-h] names [names ...]
+
+positional arguments:
+  names       name of realm to hide. Use "list" to choose
+
+optional arguments:
+  -h, --help  show this help message and exit
+usage: realm.py remove [-h] [-f] names [names ...]
+
+positional arguments:
+  names        name of realm to permanently delete. Use "list" to choose
+
+optional arguments:
+  -h, --help   show this help message and exit
+  -f, --force  force deletion operation, no prompt

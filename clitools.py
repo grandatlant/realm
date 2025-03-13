@@ -1,28 +1,34 @@
 #!/usr/bin/env -S python3
 # -*- coding=utf-8 -*-
-"""
-Reads lines from stdin until EOF (Ctrl+D) and prints them after
+r"""
+Some useful functions to work with cli
 """
 
-#import readline
-
-def readlines(prompt = None) -> list:
-    res = list()
+def readlines(*preprint, prompt = None, lines = None, end = None):
+    r"""
+    Generator for input() until EOFError throwed
+    """
+    prompt_input = str(prompt) if prompt else ''
+    append_lines = isinstance(lines, list)
+    
+    if preprint:
+        print(*preprint)
+        
     try:
         while True:
-            res.append(input(prompt if prompt else ''))
+            line = input(prompt_input)
+            if append_lines: lines.append(line)
+            yield line
     except EOFError:
         pass
-    return res
 
-##    MAIN    ##
-def main(argv: list = None) -> int:
-    lines = readlines(argv[1] if argv and len(argv) > 1 else None)
-    #print(lines)
-    for line in lines:
-        print(line)
-    return 0
+    if end is not None:
+        if append_lines: lines.append(end)
+        yield end
+
+##  MAIN
+def main():
+    return None
 
 if __name__ == '__main__':
-    import sys
-    sys.exit(main(sys.argv))
+    main()
