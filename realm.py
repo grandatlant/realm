@@ -5,13 +5,13 @@ Realm changing module for World of Warcraft
 """
 
 from argparse import ArgumentParser
-from os.path import abspath, exists as path_exists
-
+from os.path import abspath, exists as path_exists, join as path_join
+from functools import wraps
 from realmsettings import RealmSettings
 
 VERSION = '0.0.1'
 DEF_SETTINGS_FILENAME = 'realm.json'
-DEF_REALMLIST_FILENAME = '../Data/enUS/realmlist.wtf'
+DEF_REALMLIST_FILENAME = path_join('..','Data','enUS','realmlist.wtf')
 
 def confirm_action(prompt):
     return input(prompt).strip().lower() in {'y','yes'}
@@ -39,19 +39,22 @@ def readlines(*preprint, prompt = None, lines = None, end = None):
         if append_lines: lines.append(end)
         yield end
 
-def requires_settings_file(func):
-    def wrapper(args, *func_args, **func_kwargs):
-        if not path_exists(args.settings): 
-            return 1
-        return func(args, *func_args, **func_kwargs)
-    return wrapper
+def check_settings_file(check_func):
+    def decorator(func):
+        @wraps(func)
+        def wrapper(args, *func_args, **func_kwargs):
+            if not check_func(args.settings):
+                return 1
+            return func(args, *func_args, **func_kwargs)
+        return wrapper
+    return decorator
 
 ##  CLI stateless subroutines  ##
 def _default(args):
     # no command specified. return soft error status
     return 1
 
-@requires_settings_file
+@check_settings_file(path_exists)
 def _list(args):    
     with RealmSettings(abspath(args.settings)) as sets:
         for name in sets.realms:
@@ -69,7 +72,7 @@ def _list(args):
                     print(f'{predicate}{string}')
     return 0
 
-#@requires_settings_file
+#@check_settings_file(path_exists)
 def _add(args):
     with RealmSettings(abspath(args.settings)) as sets:
         name = args.name
@@ -89,7 +92,7 @@ def _add(args):
     
     return 0
 
-@requires_settings_file
+@check_settings_file(path_exists)
 def _use(args):
     with RealmSettings(abspath(args.settings)) as sets:
         name = args.name
@@ -97,7 +100,7 @@ def _use(args):
         raise NotImplementedError('Function _use is not implemented yet.')
     return 0
 
-@requires_settings_file
+@check_settings_file(path_exists)
 def _show(args):
     with RealmSettings(abspath(args.settings)) as sets:
         for name in args.names:
@@ -110,7 +113,7 @@ def _show(args):
                     print(f'Realm {name} not found to show.')
     return 0
 
-@requires_settings_file
+@check_settings_file(path_exists)
 def _hide(args):
     with RealmSettings(abspath(args.settings)) as sets:
         for name in args.names:
@@ -123,7 +126,7 @@ def _hide(args):
                     print(f'Realm {name} not found to hide.')
     return 0
 
-@requires_settings_file
+@check_settings_file(path_exists)
 def _remove(args):
     with RealmSettings(abspath(args.settings)) as sets:
         for name in args.names:
@@ -187,8 +190,6 @@ def parse_cli_args():
                          action = 'store_true', default = False,
                          help = 'force change existing realm, no prompt')
     command.add_argument('name',
-                         #nargs = '?',
-                         #default = '',
                          help = 'name for new or existing realm to add or change.')
     command.add_argument('strings',
                          nargs = '*',
@@ -200,7 +201,6 @@ def parse_cli_args():
                               help = 'use realm by name')
     command.add_argument('name',
                          nargs = 1,
-                         default = '',
                          help = 'name of chosen realm. '
                          'Use "list" to choose')
     command.set_defaults(func = _use)
@@ -209,7 +209,6 @@ def parse_cli_args():
                               help='show hidden realms')
     command.add_argument('names',
                          nargs='+',
-                         default='',
                          help='name of hidden realm to show. '
                          'Use "list" to choose')
     command.set_defaults(func = _show)
@@ -218,7 +217,6 @@ def parse_cli_args():
                               help = 'hide realms')
     command.add_argument('names',
                          nargs = '+',
-                         #default = '',
                          help = 'name of realm to hide. '
                          'Use "list" to choose')
     command.set_defaults(func = _hide)
@@ -230,7 +228,6 @@ def parse_cli_args():
                          help = 'force deletion operation, no prompt')
     command.add_argument('names',
                          nargs = '+',
-                         default = '',
                          help = 'name of realm to permanently delete. '
                          'Use "list" to choose')
     command.set_defaults(func = _remove)
