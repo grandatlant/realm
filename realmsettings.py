@@ -52,7 +52,7 @@ class RealmSettings:
         return self.realms.pop(name, default)
 
     def have_realm(self, name):
-        return (True if (name in self.realms) else False)
+        return (name in self.realms)
 
     def add(self, name, strings = None):
         entry = create_realm_entry(name, strings)
@@ -63,28 +63,19 @@ class RealmSettings:
     
     def realm_name(self, name):
         #return name ## TODO: Think about it
-        if self.have_realm(name):
-            return self.realms[name][_NAME]
-        else:
-            return '' ## TODO: Think about it
+        return self.realms.get(name, {}).get(_NAME, '')
     def realm_strings(self, name):
-        if self.have_realm(name):
-            return self.realms[name][_STRINGS]
-        else:
-            return [] ## TODO: Think about it
+        return self.realms.get(name, {}).get(_STRINGS, [])
     def realm_hidden(self, name):
-        if self.have_realm(name):
-            return self.realms[name][_HIDDEN]
-        else:
-            return None ## TODO: Think about it
+        return self.realms.get(name, {}).get(_HIDDEN, None)
     
     def show(self, name):
         if self.have_realm(name):
-            self.realms[name][_HIDDEN] = False
+            self.realms.get(name, {})[_HIDDEN] = False
             return True
     def hide(self, name):
         if self.have_realm(name):
-            self.realms[name][_HIDDEN] = True
+            self.realms.get(name, {})[_HIDDEN] = True
             return True
             
     def load(self):

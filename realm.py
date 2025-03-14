@@ -8,20 +8,51 @@ from argparse import ArgumentParser
 from os.path import abspath, exists as path_exists
 
 from realmsettings import RealmSettings
-from clitools import readlines
 
 VERSION = '0.0.1'
 DEF_SETTINGS_FILENAME = 'realm.json'
 DEF_REALMLIST_FILENAME = '../Data/enUS/realmlist.wtf'
+
+def confirm_action(prompt):
+    return input(prompt).strip().lower() in {'y','yes'}
+
+def readlines(*preprint, prompt = None, lines = None, end = None):
+    """
+    Generator for input() until EOFError throwed
+    """
+    prompt_input = str(prompt) if prompt else ''
+    append_lines = bool(isinstance(lines, list))
+    
+    if preprint:
+        print(*preprint)
+        
+    while True:
+        try:
+            line = input(prompt_input)
+        except EOFError:
+            break
+        if append_lines: lines.append(line)
+        yield line
+    
+
+    if end is not None:
+        if append_lines: lines.append(end)
+        yield end
+
+def requires_settings_file(func):
+    def wrapper(args, *func_args, **func_kwargs):
+        if not path_exists(args.settings): 
+            return 1
+        return func(args, *func_args, **func_kwargs)
+    return wrapper
 
 ##  CLI stateless subroutines  ##
 def _default(args):
     # no command specified. return soft error status
     return 1
 
-def _list(args):
-    if not path_exists(args.settings): return 1
-    
+@requires_settings_file
+def _list(args):    
     with RealmSettings(abspath(args.settings)) as sets:
         for name in sets.realms:
             # condition to pass current realm
@@ -38,13 +69,12 @@ def _list(args):
                     print(f'{predicate}{string}')
     return 0
 
+#@requires_settings_file
 def _add(args):
-    #if not path_exists(args.settings): return 1
     with RealmSettings(abspath(args.settings)) as sets:
         name = args.name
         if sets.have_realm(name) and not args.force:
-            ans = input(f'Realm {name} is already exists. Rewrite? (y/n) ')
-            if not ans.upper() in 'YES':
+            if not confirm_action(f'Realm {name} exists. Rewrite?(y/n)'):
                 return 1
         
         strings = args.strings
@@ -59,16 +89,16 @@ def _add(args):
     
     return 0
 
+@requires_settings_file
 def _use(args):
-    if not path_exists(args.settings): return 1
     with RealmSettings(abspath(args.settings)) as sets:
         name = args.name
         ## TODO: Implement it!
         raise NotImplementedError('Function _use is not implemented yet.')
     return 0
 
+@requires_settings_file
 def _show(args):
-    if not path_exists(args.settings): return 1
     with RealmSettings(abspath(args.settings)) as sets:
         for name in args.names:
             if sets.have_realm(name):
@@ -80,8 +110,8 @@ def _show(args):
                     print(f'Realm {name} not found to show.')
     return 0
 
+@requires_settings_file
 def _hide(args):
-    if not path_exists(args.settings): return 1
     with RealmSettings(abspath(args.settings)) as sets:
         for name in args.names:
             if sets.have_realm(name):
@@ -93,8 +123,8 @@ def _hide(args):
                     print(f'Realm {name} not found to hide.')
     return 0
 
+@requires_settings_file
 def _remove(args):
-    if not path_exists(args.settings): return 1
     with RealmSettings(abspath(args.settings)) as sets:
         for name in args.names:
             if sets.have_realm(name):
@@ -102,8 +132,7 @@ def _remove(args):
                 if args.force:
                     confirmed = True
                 else:
-                    prompt = input(f'Confirm removing realm {name}? (y/n) ')
-                    if prompt.upper() in 'YES':
+                    if confirm_action(f'Confirm removing realm {name}?(y/n)'):
                         confirmed = True
                 if confirmed:
                     removed = sets.remove(name)
@@ -114,7 +143,7 @@ def _remove(args):
                     print(f'Realm {name} not found to remove.')
     return 0
 
-def _parse_cli_args():
+def parse_cli_args():
     parser = ArgumentParser(description = __doc__,
                             allow_abbrev = False,
                             epilog = 'Copyright (C) 2025 grandatlant')
@@ -210,7 +239,7 @@ def _parse_cli_args():
 
 
 if __name__ == '__main__':
-    args = _parse_cli_args()
+    args = parse_cli_args()
     
     if args.verbosity > 2:
         print(f'{vars(args) = }')
