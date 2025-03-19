@@ -1,4 +1,4 @@
-#!/usr/bin/env -S python3
+#!/usr/bin/env -S python3 -OO
 # -*- coding=utf-8 -*-
 """
 Realm changing module for World of Warcraft
@@ -7,24 +7,28 @@ Realm changing module for World of Warcraft
 from argparse import ArgumentParser
 from os.path import abspath, exists as path_exists, join as path_join
 from functools import wraps
+
 from realmsettings import RealmSettings
 
 VERSION = '0.0.1'
 DEF_SETTINGS_FILENAME = 'realm.json'
 DEF_REALMLIST_FILENAME = path_join('..','Data','enUS','realmlist.wtf')
 
-def confirm_action(prompt):
-    return input(prompt).strip().lower() in {'y','yes'}
+## Helper fucntions
+def verbose_print(msg, /, verbosity = 1, min_level = 1):
+    if verbosity >= min_level: print(msg)
+def info_print(msg, verbosity = 1): verbose_print(msg, verbosity, 2)
+def debug_print(msg, verbosity = 1): verbose_print(msg, verbosity, 3)
 
-def readlines(*preprint, prompt = None, lines = None, end = None):
+def confirm_action(prompt, /, confirmations = {'y','yes'}):
+    return (input(prompt).strip().lower() in confirmations)
+
+def readlines(prompt = None, lines = None, end = None):
     """
-    Generator for input() until EOFError throwed
+    Generator for input() until EOFError
     """
     prompt_input = str(prompt) if prompt else ''
     append_lines = bool(isinstance(lines, list))
-    
-    if preprint:
-        print(*preprint)
         
     while True:
         try:
@@ -34,7 +38,6 @@ def readlines(*preprint, prompt = None, lines = None, end = None):
         if append_lines: lines.append(line)
         yield line
     
-
     if end is not None:
         if append_lines: lines.append(end)
         yield end
@@ -82,48 +85,50 @@ def _add(args):
         
         strings = args.strings
         if not strings:
-            if args.verbosity:
-                print('Enter strings for realmlist.wtf. EOF (ctrl+d) to finish')
-            strings = [got_string for got_string in readlines() if got_string]
+            verbose_print('Enter strings for realmlist.wtf. '
+                          'EOF (ctrl+d) to finish', args.verbosity)
+            strings = [got_string.strip()
+                       for got_string in readlines()
+                       if got_string]
         
         new_entry = sets.add(name, strings)
         if new_entry and args.verbosity:
-            print(f'New entry for {name} done: {new_entry}')
+            verbose_print(f'New entry for {name} done: {new_entry}',
+                          args.verbosity)
     
     return 0
 
 @check_settings_file(path_exists)
 def _use(args):
+    raise NotImplementedError('Function _use is not implemented yet.')
     with RealmSettings(abspath(args.settings)) as sets:
         name = args.name
         ## TODO: Implement it!
-        raise NotImplementedError('Function _use is not implemented yet.')
+        
     return 0
 
 @check_settings_file(path_exists)
 def _show(args):
     with RealmSettings(abspath(args.settings)) as sets:
         for name in args.names:
-            if sets.have_realm(name):
-                show_success = sets.show(name)
-                if show_success and args.verbosity:
-                    print(f'Realm {name} marked as non-hidden')
+            if sets.have_realm(name) and sets.show(name):
+                verbose_print(f'Realm {name} marked as non-hidden',
+                              args.verbosity)
             else:
-                if args.verbosity > 1:
-                    print(f'Realm {name} not found to show.')
+                info_print(f'Realm {name} not found to show.',
+                           args.verbosity)
     return 0
 
 @check_settings_file(path_exists)
 def _hide(args):
     with RealmSettings(abspath(args.settings)) as sets:
         for name in args.names:
-            if sets.have_realm(name):
-                hide_success = sets.hide(name)
-                if hide_success and args.verbosity:
-                    print(f'Realm {name} marked as hidden')
+            if sets.have_realm(name) and sets.hide(name):
+                verbose_print(f'Realm {name} marked as hidden',
+                              args.verbosity)
             else:
-                if args.verbosity > 1:
-                    print(f'Realm {name} not found to hide.')
+                info_print(f'Realm {name} not found to hide.',
+                           args.verbosity)
     return 0
 
 @check_settings_file(path_exists)
@@ -137,13 +142,12 @@ def _remove(args):
                 else:
                     if confirm_action(f'Confirm removing realm {name}?(y/n)'):
                         confirmed = True
-                if confirmed:
-                    removed = sets.remove(name)
-                    if removed and args.verbosity:
-                        print(f'Realm {name} removed.')
+                if confirmed and sets.remove(name):
+                    verbose_print(f'Realm {name} removed.',
+                                  args.verbosity)
             else:
-                if args.verbosity > 1:
-                    print(f'Realm {name} not found to remove.')
+                info_print(f'Realm {name} not found to remove.',
+                           args.verbosity)
     return 0
 
 def parse_cli_args():
@@ -237,11 +241,6 @@ def parse_cli_args():
 
 if __name__ == '__main__':
     args = parse_cli_args()
-    
-    if args.verbosity > 2:
-        print(f'{vars(args) = }')
-
-    result = args.func(args)
-            
-    if args.verbosity > 2:
-        print(f'{result = }')
+    debug_print(f'{vars(args) = }', args.verbosity)
+    result = args.func(args)     
+    debug_print(f'{result = }', args.verbosity)

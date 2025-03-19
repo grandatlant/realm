@@ -1,4 +1,4 @@
-#!/usr/bin/env -S python3
+#!/usr/bin/env -S python3 -OO
 # -*- coding = utf-8 -*-
 """
 Classes and functions for RealmSettings
@@ -6,35 +6,45 @@ Classes and functions for RealmSettings
 
 import json
 from sys import stderr
+from os.path import join as path_join
+from enum import unique, Enum
 
-# Constants for realm entry keys
-_NAME = 'name'
-_STRINGS = 'strings'
-_HIDDEN = 'hidden'
-
-def create_realm_entry(name, /, strings = None, *, hidden = False, **kwds):
-    keys = _NAME, _STRINGS, _HIDDEN
-    vals = name, (strings if strings else []), hidden
-    entry = dict(zip(keys, vals))
-    entry.update(kwds) ## for future usage if I need it
-    return entry
+@unique
+class EntryField(str, Enum):
+    NAME = 'name'
+    HIDDEN = 'hidden'
+    STRINGS = 'strings'
 
 class RealmSettings:
     r"""File-supported RealmSettings with context-managing protocol"""
-    __slots__ = '_filename', '_realms'
-    
-    def __init__(self, filename = None, /, *args, **kwds):
-        super().__init__()
-        self._filename = filename if filename else self.default_file_name()
-        self._realms = dict()
+    __slots__ = '_filename', '_wow_path', '_realms'
 
+    def __init__(self, filename = None, /, *args, **kwds):
+        ##super().__init__()
+        self._filename = filename or self.default_file_name()
+        self._wow_path = self.default_wow_path()
+        self._realms = dict()
+    
     @staticmethod
     def default_file_name():
-        return 'RealmSettings.json'
-
+        return path_join('RealmSettings.json')
+    @staticmethod
+    def default_wow_path():
+        return path_join('..')
+    @staticmethod
+    def create_realm_entry(name, strings = None, /,*, hidden = False, **kwds):
+        keys = EntryField.NAME, EntryField.HIDDEN, EntryField.STRINGS
+        vals = name, hidden, strings or []
+        entry = dict(zip(keys, vals))
+        entry.update(kwds) ## for future usage if I need it
+        return entry
+    
     @property
     def filename(self):
         return self._filename
+    @property
+    def realmlist_filename(self):
+        return path_join(self._wow_path, 'Data', 'enUS', 'realmlist.wtf')
     @property
     def realms(self):
         return self._realms
@@ -55,39 +65,46 @@ class RealmSettings:
         return (name in self.realms)
 
     def add(self, name, strings = None):
-        entry = create_realm_entry(name, strings)
+        entry = self.create_realm_entry(name, strings)
         self.realms[name] = entry
         return entry
     def remove(self, name):
-        return self.pop(name, False)
+        return self.realms.pop(name, False)
     
     def realm_name(self, name):
-        #return name ## TODO: Think about it
-        return self.realms.get(name, {}).get(_NAME, '')
+        return self.realms.get(name, {}).get(EntryField.NAME, '')
     def realm_strings(self, name):
-        return self.realms.get(name, {}).get(_STRINGS, [])
+        return self.realms.get(name, {}).get(EntryField.STRINGS, [])
     def realm_hidden(self, name):
-        return self.realms.get(name, {}).get(_HIDDEN, None)
+        return self.realms.get(name, {}).get(EntryField.HIDDEN, None)
     
     def show(self, name):
         if self.have_realm(name):
-            self.realms.get(name, {})[_HIDDEN] = False
+            self.realms[name][EntryField.HIDDEN] = False
             return True
+        return False
     def hide(self, name):
         if self.have_realm(name):
-            self.realms.get(name, {})[_HIDDEN] = True
+            self.realms[name][EntryField.HIDDEN] = True
             return True
-            
+        return False
+    
     def load(self):
         try:
-            with open(self._filename, 'rt') as f:
-                self._realms = dict(json.load(f))
+            with open(self.filename, 'rt') as f:
+                sets = dict(json.load(f))
+                self._wow_path = sets.get('wow_path', self._wow_path)
+                self._realms.clear()
+                self._realms.update(sets.get('realms', {}))
         except OSError as ex:
             print(f"Can't load {self._filename}: {ex}", file = stderr)
     def save(self):
-        with open(self._filename, 'wt') as f:
-            json.dump(self._realms, f)
-
+        with open(self.filename, 'wt') as f:
+            sets = dict()
+            sets['wow_path'] = self._wow_path
+            sets['realms'] = self._realms
+            json.dump(sets, f)
+    
     def __enter__(self):
         self.load()
         return self
@@ -95,13 +112,16 @@ class RealmSettings:
         if not exc_type:
             self.save()
             return True
-        
+    
 
 ##  MAIN ENTRY POINT  ##
 def main():
     #return None
     from pprint import pprint as pp
     with RealmSettings() as sets:
+        print(f'{sets.default_file_name() = }')
+        print(f'{sets.default_wow_path() = }')
+        print(f'{sets.realmlist_filename = }')
         print(f'Initial settings for default {sets.filename}')
         pp(sets.realms)
 
