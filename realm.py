@@ -12,7 +12,7 @@ from realmsettings import RealmSettings
 
 VERSION = '0.0.1'
 DEF_SETTINGS_FILENAME = 'realm.json'
-DEF_REALMLIST_FILENAME = path_join('..','Data','enUS','realmlist.wtf')
+DEF_REALMLIST_FILENAME = path_join(abspath('..'),'Data','enUS','realmlist.wtf')
 
 ## Helper fucntions
 def verbose_print(msg, /, verbosity = 1, min_level = 1):
@@ -100,11 +100,12 @@ def _add(args):
 
 @check_settings_file(path_exists)
 def _use(args):
+    ## TODO: Implement
     raise NotImplementedError('Function _use is not implemented yet.')
     with RealmSettings(abspath(args.settings)) as sets:
         name = args.name
-        ## TODO: Implement it!
-        
+        ## TODO: Implement
+        sets.use(name)
     return 0
 
 @check_settings_file(path_exists)
@@ -204,7 +205,6 @@ def parse_cli_args():
     command = subs.add_parser('use',
                               help = 'use realm by name')
     command.add_argument('name',
-                         nargs = 1,
                          help = 'name of chosen realm. '
                          'Use "list" to choose')
     command.set_defaults(func = _use)
