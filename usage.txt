@@ -23,6 +23,7 @@ Commands:
     remove              remove realms
 
 Copyright (C) 2025 grandatlant
+
 usage: realm.py list [-h] [-l] [--all | --hidden]
 
 optional arguments:
@@ -30,6 +31,7 @@ optional arguments:
   -l, --long  list full information, not only names
   --all       list all realms, including hidden
   --hidden    list hidden realms only
+
 usage: realm.py add [-h] [-f] name [strings [strings ...]]
 
 positional arguments:
@@ -40,6 +42,7 @@ positional arguments:
 optional arguments:
   -h, --help   show this help message and exit
   -f, --force  force change existing realm, no prompt
+
 usage: realm.py use [-h] name
 
 positional arguments:
@@ -47,6 +50,7 @@ positional arguments:
 
 optional arguments:
   -h, --help  show this help message and exit
+
 usage: realm.py show [-h] names [names ...]
 
 positional arguments:
@@ -54,6 +58,7 @@ positional arguments:
 
 optional arguments:
   -h, --help  show this help message and exit
+
 usage: realm.py hide [-h] names [names ...]
 
 positional arguments:
@@ -61,6 +66,7 @@ positional arguments:
 
 optional arguments:
   -h, --help  show this help message and exit
+
 usage: realm.py remove [-h] [-f] names [names ...]
 
 positional arguments:
