@@ -6,50 +6,82 @@ Classes and functions for RealmSettings
 
 __version__ = '1.0.0'
 
-__all__ = ['EntryField', 'BaseSettings', 'RealmSettings']
+__all__ = ['EntryField',
+           'BaseSettings',
+           'CoreSettings',
+           'RealmSettings']
 
 from sys import stderr as errfile, exit as sys_exit
 from os.path import abspath, join as path_join, exists as path_exists
 
 from json import load as json_load, dump as json_dump
 from enum import Enum
+from abc import ABC, abstractmethod
 
 class EntryField(str, Enum):
     NAME = 'name'
     HIDDEN = 'hidden'
     STRINGS = 'strings'
 
-class BaseSettings:
+class BaseSettings(ABC):
+    """BaseSettings ABC interface"""
+    __slots__ = ()
+    
+    ## Item access
+    
+    @abstractmethod
+    def __contains__(self, key, /): return False
+    @abstractmethod
+    def __getitem__(self, key, /): return None
+    @abstractmethod
+    def __setitem__(self, key, value, /): pass
+    @abstractmethod
+    def __delitem__(self, key, /): pass
+    @abstractmethod
+    def __iter__(self, /): return {}.__iter__()
+    
+    # Safe item-getters
+    
+    @abstractmethod
+    def get(self, name, default = None): return default
+    @abstractmethod
+    def pop(self, name, default = None): return default
+    @abstractmethod
+    def popitem(self): raise KeyError(f'{self.__class__} have no items')
+    @abstractmethod
+    def clear(self): return None
+    
+
+class CoreSettings(BaseSettings):
     """File-supported RealmSettings with context-managing protocol"""
     __slots__ = '_filename', '_realmlist', '_realms',
-    
-    ## Special class methods
-    
-    @classmethod
-    def default_filename(cls):
-        f"""Returns './{cls.__name__}.json'"""
-        return path_join('.', cls.__name__+'.json')
-    
-    @staticmethod
-    def default_realmlist():
-        """Returns '../Data/enUS/realmlist.wtf'"""
-        return path_join('..', 'Data', 'enUS', 'realmlist.wtf')
-    
-    @staticmethod
-    def create_realm_entry(name, strings = None, /,*, hidden = False, **kwds):
-        """Creates new dict() with keys from EntryField Enum, 
-        filled with function params"""
-        keys = EntryField.NAME, EntryField.HIDDEN, EntryField.STRINGS
-        vals = name, hidden, strings or []
-        entry = dict(zip(keys, vals))
-        entry.update(kwds) ## for future usage if I need it
-        return entry
     
     def __init__(self, filename = None, /, *args, **kwds):
         """Initial instance fill"""
         self._filename = filename or self.default_filename()
         self._realmlist = self.default_realmlist()
         self._realms = dict()
+        
+    @classmethod
+    def default_filename(cls) -> str:
+        """Returns './{cls.__name__}.json'"""
+        return path_join('.', cls.__name__+'.json')
+    @staticmethod
+    def default_realmlist() -> str:
+        """Returns '../Data/enUS/realmlist.wtf'"""
+        return path_join('..', 'Data', 'enUS', 'realmlist.wtf')
+    @staticmethod
+    def create_realm_entry(name, strings = None, /, *,
+                           hidden = False, **kwds) -> dict:
+        """Creates new dict() with keys from EntryField Enum, 
+        filled with function params"""
+        keys = EntryField.NAME, EntryField.HIDDEN, EntryField.STRINGS
+        vals = name, hidden or False, strings or []
+        entry = dict(zip(keys, vals))
+        entry.update(kwds) ## for future usage if I need it
+        return entry
+
+    ## Propertys
     
     @property
     def realms(self):
@@ -75,11 +107,19 @@ class BaseSettings:
         return self.realms.__getitem__(key)
     def __setitem__(self, key, value, /):
         return self.realms.__setitem__(key, value)
+    def __delitem__(self, key, /):
+        return self.realms.__delitem__(key)
+    def __iter__(self):
+        return self.realms.__iter__()
     
     def get(self, name, default = None):
         return self.realms.get(name, default)
     def pop(self, name, default = None):
         return self.realms.pop(name, default)
+    def popitem(self):
+        return self.realms.popitem()
+    def clear(self):
+        return self.realms.clear()
 
     ## Service methods
     
@@ -153,7 +193,7 @@ class BaseSettings:
         if not any((exc_type, exc_value, traceback)):
             self.save()
 
-class RealmSettings(BaseSettings):
+class RealmSettings(CoreSettings):
     __slots__ = ()
     
 
@@ -180,6 +220,7 @@ def main() -> int:
         sets.hide('uwow')
         print('Settings filled.')
         pp(sets.realms)
+        
     return 0
 
 if __name__ == '__main__':
