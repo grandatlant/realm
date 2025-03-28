@@ -11,7 +11,7 @@ from sys import exit as sys_exit
 
 from realmsettings import RealmSettings
 
-VERSION = '1.0.0'
+VERSION = '1.0.1'
 DEF_SETTINGS_FILENAME = path_join('.', 'realm.json')
 
 ## Helper fucntions
@@ -19,7 +19,6 @@ DEF_SETTINGS_FILENAME = path_join('.', 'realm.json')
 def verbose_print(msg, /, verbosity = 1, min_level = 1):
     if verbosity >= min_level: print(msg)
 def info_print(msg, verbosity): verbose_print(msg, verbosity, 2)
-def debug_print(msg, verbosity): verbose_print(msg, verbosity, 3)
 
 def confirm_action(prompt, /, confirmations = {'y','yes'}):
     return (input(prompt).strip().lower() in confirmations)
@@ -270,9 +269,8 @@ def parse_cli_args():
 
 
 if __name__ == '__main__':
-    
     args = parse_cli_args()
-    debug_print(f'{vars(args) = }', args.verbosity)
-    result = args.func(args)     
-    debug_print(f'{result = }', args.verbosity)
+    if __debug__: print(f'{vars(args) = }')
+    result = args.func(args)
+    if __debug__: print(f'{result = }')
     sys_exit(result)
