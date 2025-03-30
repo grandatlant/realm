@@ -27,7 +27,7 @@ class BaseSettings(ABC):
     """BaseSettings ABC interface"""
     __slots__ = ()
     
-    ## Item access
+    ## Dunder Item access
     
     @abstractmethod
     def __contains__(self, key, /): return False
@@ -43,14 +43,57 @@ class BaseSettings(ABC):
     # Safe item-getters
     
     @abstractmethod
-    def get(self, name, default = None): return default
+    def get(self, name, default = None, /): return default
     @abstractmethod
-    def pop(self, name, default = None): return default
+    def pop(self, name, default = None, /): return default
     @abstractmethod
-    def popitem(self): raise KeyError(f'{self.__class__} have no items')
+    def popitem(self, /): raise KeyError(f'{self.__class__} have no items')
     @abstractmethod
-    def clear(self): return None
+    def clear(self, /): return None
+
+    # Service wrapper methods
+
+    @abstractmethod
+    def have_realm(self, name):
+        return (name in self)
+    @abstractmethod
+    def realm_entry(self, name):
+        return self.get(name, {})
+    @abstractmethod
+    def realm_name(self, name):
+        return self.realm_entry(name).get(EntryField.NAME, '')
+    @abstractmethod
+    def realm_hidden(self, name):
+        return self.realm_entry(name).get(EntryField.HIDDEN, None)
+    @abstractmethod
+    def realm_strings(self, name):
+        return self.realm_entry(name).get(EntryField.STRINGS, [])
     
+    @abstractmethod
+    def add(self, name, strings = None):
+        """Add or edit realm with 'name'"""
+        return {}
+    @abstractmethod
+    def remove(self, name):
+        """Remove realm 'name' for good"""
+        return self.pop(name, False)
+
+    @abstractmethod
+    def show(self, name):
+        """Unmark realm 'name' as hidden"""
+    @abstractmethod
+    def hide(self, name):
+        """Mark realm 'name' as hidden"""
+    @abstractmethod
+    def use(self, name):
+        """Push realm's 'strings' to 'realmlist.wtf' file"""
+    @abstractmethod
+    def load(self):
+        """Load settings from file"""
+    @abstractmethod
+    def save(self):
+        """Save current settings to file"""
+        
 
 class CoreSettings(BaseSettings):
     """File-supported RealmSettings with context-managing protocol"""
@@ -124,22 +167,23 @@ class CoreSettings(BaseSettings):
     ## Service methods
     
     def have_realm(self, name):
-        return (name in self)
+        return super().have_realm(name)
+    def realm_entry(self, name):
+        return super().realm_entry(name)
     def realm_name(self, name):
-        return self.get(name, {}).get(EntryField.NAME, '')
+        return super().realm_name(name)
     def realm_strings(self, name):
-        return self.get(name, {}).get(EntryField.STRINGS, [])
+        return super().realm_strings(name)
     def realm_hidden(self, name):
-        return self.get(name, {}).get(EntryField.HIDDEN, None)
+        return super().realm_hidden(name)
     
     def add(self, name, strings = None):
-        """Add or edit realm 'name'"""
-        entry = self.create_realm_entry(name, strings)
+        entry = super().add(name) or {}
+        entry.update(self.create_realm_entry(name, strings))
         self.realms[name] = entry
         return entry
     def remove(self, name):
-        """Remove realm 'name' for good"""
-        return self.realms.pop(name, False)
+        return super().remove(name)
     
     def show(self, name):
         """Unmark realm 'name' as hidden"""
@@ -155,7 +199,7 @@ class CoreSettings(BaseSettings):
         return False
     
     def use(self, name):
-        r"""Push realm`s 'strings' to 'realmlist.wtf' file"""
+        """Push realm`s 'strings' to 'realmlist.wtf' file"""
         if self.have_realm(name) and path_exists(self.realmlist):
             with open(self.realmlist, 'wt') as rlfile:
                 for line in self.realm_strings(name):
@@ -173,6 +217,12 @@ class CoreSettings(BaseSettings):
                 self.realms.update(sets.get('realms', dict()))
         except OSError as ex:
             print(f"Can't load {self._filename}: {ex}", file = errfile)
+            return False
+        else:
+            return True
+        finally:
+            sets = None
+            ex = None
     def save(self):
         """Save current settings to JSON file"""
         try:
@@ -183,6 +233,12 @@ class CoreSettings(BaseSettings):
                 json_dump(sets, f)
         except OSError as ex:
             print(f"Can't save {self._filename}: {ex}", file = errfile)
+            return False
+        else:
+            return True
+        finally:
+            sets = None
+            ex = None
 
     ## Context methods
     
@@ -194,6 +250,7 @@ class CoreSettings(BaseSettings):
             self.save()
 
 class RealmSettings(CoreSettings):
+    """Settings with advanced features besides CoreSettings"""
     __slots__ = ()
     
 
