@@ -10,6 +10,7 @@ from os.path import exists as path_exists, join as path_join
 from sys import exit as sys_exit
 
 from realmsettings import RealmSettings
+from clitools import confirm_action, readlines
 
 VERSION = '1.0.1'
 DEF_SETTINGS_FILENAME = path_join('.', 'realm.json')
@@ -21,28 +22,6 @@ def verbose_print(msg, /, verbosity = 1, min_level = 1):
         print(msg)
 def info_print(msg, verbosity):
     verbose_print(msg, verbosity, 2)
-
-def confirm_action(prompt, /, confirmations = {'y','yes'}):
-    return (input(prompt).strip().lower() in confirmations)
-
-def readlines(prompt = None, lines = None, end = None):
-    """Generator for input() until EOFError"""
-    prompt_input = str(prompt) if prompt else ''
-    append_lines = bool(isinstance(lines, list))
-    
-    while True:
-        try:
-            line = input(prompt_input)
-        except EOFError:
-            break
-        if append_lines:
-            lines.append(line)
-        yield line
-    
-    if end is not None:
-        if append_lines:
-            lines.append(end)
-        yield end
 
 def check_settings(check_func):
     def decorator(func):
