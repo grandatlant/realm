@@ -10,42 +10,27 @@ from os.path import exists as path_exists, join as path_join
 from sys import exit as sys_exit
 
 from realmsettings import RealmSettings
+from clitools import confirm_action, readlines
 
-VERSION = '1.0.0'
+VERSION = '1.0.2'
 DEF_SETTINGS_FILENAME = path_join('.', 'realm.json')
 
 ## Helper fucntions
 
 def verbose_print(msg, /, verbosity = 1, min_level = 1):
-    if verbosity >= min_level: print(msg)
-def info_print(msg, verbosity): verbose_print(msg, verbosity, 2)
-def debug_print(msg, verbosity): verbose_print(msg, verbosity, 3)
-
-def confirm_action(prompt, /, confirmations = {'y','yes'}):
-    return (input(prompt).strip().lower() in confirmations)
-
-def readlines(prompt = None, lines = None, end = None):
-    """Generator for input() until EOFError"""
-    prompt_input = str(prompt) if prompt else ''
-    append_lines = bool(isinstance(lines, list))
-    
-    while True:
-        try:
-            line = input(prompt_input)
-        except EOFError:
-            break
-        if append_lines: lines.append(line)
-        yield line
-    
-    if end is not None:
-        if append_lines: lines.append(end)
-        yield end
+    if verbosity >= min_level:
+        print(msg)
+def info_print(msg, verbosity):
+    verbose_print(msg, verbosity, 2)
 
 def check_settings(check_func):
     def decorator(func):
         @wraps(func)
         def wrapper(args, *func_args, **func_kwargs):
             if not check_func(args.settings):
+                verbose_print('Settings check for file "' + 
+                              args.settings + '" failed.', 
+                              args.verbosity)
                 return 1
             return func(args, *func_args, **func_kwargs)
         return wrapper
@@ -63,16 +48,18 @@ def _list(args):
         for name in sets.realms:
             # condition to pass current realm
             if sets.realm_hidden(name):
-                if not (args.all or args.hidden): continue
+                if not (args.all or args.hidden):
+                    continue
             else:
-                if args.hidden: continue
+                if args.hidden:
+                    continue
             hidden_indicator = ('(hidden)' if sets.realm_hidden(name) else '')
             name_to_print = f'{hidden_indicator}{name}'
             print(name_to_print)
             if args.long:
-                predicate = (f'{name_to_print} -> ' if args.verbosity else '')
+                prefix = (f'{name_to_print} -> ' if args.verbosity else '')
                 for string in sets.realm_strings(name):
-                    print(f'{predicate}{string}')
+                    print(f'{prefix}{string}')
     return 0
 
 #@check_settings(path_exists)
@@ -80,7 +67,8 @@ def _add(args):
     with RealmSettings(args.settings) as sets:
         name = args.name
         if sets.have_realm(name) and not args.force:
-            if not confirm_action(f'Realm {name} exists. Rewrite?(y/n)'):
+            ## TODO : Think about verbosity and input here
+            if not confirm_action('Realm '+name+' exists. Rewrite?(y/n)'):
                 return 1
         
         strings = args.strings
@@ -93,7 +81,7 @@ def _add(args):
         
         new_entry = sets.add(name, strings)
         if new_entry and args.verbosity:
-            verbose_print(f'New entry for {name} done: {new_entry}',
+            verbose_print('New entry for '+name+' done: {new_entry}',
                           args.verbosity)
     
     return 0
@@ -102,7 +90,7 @@ def _add(args):
 def _use(args):
     with RealmSettings(args.settings) as sets:
         while not path_exists(sets.realmlist):
-            if confirm_action(f'Path "{sets.realmlist}" '
+            if confirm_action('Path "'+sets.realmlist+'" '
                               'to "realmlist.wtf" is not exists. '
                               'Change it? (y/n)'):
                 sets.realmlist = input('Enter new path to "realmlist.wtf": ')
@@ -111,15 +99,15 @@ def _use(args):
         name = args.name
         if sets.have_realm(name):
             if sets.use(name):
-                verbose_print(f'Realm "{name}" used for realmlist',
+                verbose_print('Realm "'+name+'" used for realmlist',
                               args.verbosity)
             else:
-                verbose_print(f'Failed to use realm "{name}" '
-                              'for "{sets.realmlist}" file',
+                verbose_print('Failed to use realm "'+name+'" '
+                              'for '+sets.realmlist+' file',
                               args.verbosity)
                 return 1
         else:
-            verbose_print(f'Realm {name} not found to use.',
+            verbose_print('Realm '+name+' not found to use.',
                           args.verbosity)
             return 1
     return 0
@@ -129,10 +117,10 @@ def _show(args):
     with RealmSettings(args.settings) as sets:
         for name in args.names:
             if sets.have_realm(name) and sets.show(name):
-                verbose_print(f'Realm {name} marked as non-hidden',
+                verbose_print('Realm '+name+' marked as non-hidden',
                               args.verbosity)
             else:
-                info_print(f'Realm {name} not found to show.',
+                info_print('Realm '+name+' not found to show.',
                            args.verbosity)
     return 0
 
@@ -141,10 +129,10 @@ def _hide(args):
     with RealmSettings(args.settings) as sets:
         for name in args.names:
             if sets.have_realm(name) and sets.hide(name):
-                verbose_print(f'Realm {name} marked as hidden',
+                verbose_print('Realm '+name+' marked as hidden',
                               args.verbosity)
             else:
-                info_print(f'Realm {name} not found to hide.',
+                info_print('Realm '+name+' not found to hide.',
                            args.verbosity)
     return 0
 
@@ -157,13 +145,13 @@ def _remove(args):
                 if args.force:
                     confirmed = True
                 else:
-                    if confirm_action(f'Confirm removing realm {name}?(y/n)'):
+                    if confirm_action('Confirm removing realm "'+name+'"?(y/n)'):
                         confirmed = True
                 if confirmed and sets.remove(name):
-                    verbose_print(f'Realm {name} removed.',
+                    verbose_print('Realm '+name+' removed.',
                                   args.verbosity)
             else:
-                info_print(f'Realm {name} not found to remove.',
+                info_print('Realm '+name+' not found to remove.',
                            args.verbosity)
     return 0
 
@@ -270,9 +258,8 @@ def parse_cli_args():
 
 
 if __name__ == '__main__':
-    
     args = parse_cli_args()
-    debug_print(f'{vars(args) = }', args.verbosity)
-    result = args.func(args)     
-    debug_print(f'{result = }', args.verbosity)
+    if __debug__: print(f'{vars(args) = }')
+    result = args.func(args)
+    if __debug__: print(f'{result = }')
     sys_exit(result)
