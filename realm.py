@@ -12,7 +12,7 @@ from sys import exit as sys_exit
 from realmsettings import RealmSettings
 from clitools import confirm_action, readlines
 
-VERSION = '1.0.1'
+VERSION = '1.0.2'
 DEF_SETTINGS_FILENAME = path_join('.', 'realm.json')
 
 ## Helper fucntions
