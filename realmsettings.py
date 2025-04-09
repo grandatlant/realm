@@ -16,12 +16,35 @@ from os.path import abspath, join as path_join, exists as path_exists
 
 from json import load as json_load, dump as json_dump
 from enum import Enum
+from dataclasses import dataclass, field
 from abc import ABC, abstractmethod
 
 class EntryField(str, Enum):
     NAME = 'name'
     HIDDEN = 'hidden'
     STRINGS = 'strings'
+
+class DefaultFactory:
+    @staticmethod
+    def filename():
+        return path_join('.', 'DefaultSettings.json')
+    @staticmethod
+    def realmlist():
+        return path_join('..', 'Data', 'enUS', 'realmlist.wtf')
+
+@dataclass()
+class SettingsData:
+    #__slots__ = '_filename', '_realmlist', '_realms',
+    _filename: str = field(default_factory=DefaultFactory.filename)
+    _realmlist: str = field(init=False,
+                            compare=False,
+                            default_factory=DefaultFactory.realmlist)
+    _realms: dict = field(init=False,
+                          compare=False,
+                          default_factory=dict)
+
+    def __post_init__(self):
+        pass
 
 class BaseSettings(ABC):
     """BaseSettings ABC interface"""
@@ -95,24 +118,16 @@ class BaseSettings(ABC):
         """Save current settings to file"""
         
 
-class CoreSettings(BaseSettings):
+class CoreSettings(SettingsData, BaseSettings):
     """File-supported RealmSettings with context-managing protocol"""
-    __slots__ = '_filename', '_realmlist', '_realms',
+    #__slots__ = '_filename', '_realmlist', '_realms',
     
-    def __init__(self, filename = None, /, *args, **kwds):
-        """Initial instance fill"""
-        self._filename = filename or self.default_filename()
-        self._realmlist = self.default_realmlist()
-        self._realms = dict()
+##    def __init__(self, filename = None, /, *args, **kwds):
+##        """Initial instance fill"""
+##        self._filename = filename or self.default_filename()
+##        self._realmlist = self.default_realmlist()
+##        self._realms = dict()
         
-    @classmethod
-    def default_filename(cls) -> str:
-        """Returns './{cls.__name__}.json'"""
-        return path_join('.', cls.__name__+'.json')
-    @staticmethod
-    def default_realmlist() -> str:
-        """Returns '../Data/enUS/realmlist.wtf'"""
-        return path_join('..', 'Data', 'enUS', 'realmlist.wtf')
     @staticmethod
     def create_realm_entry(name, strings = None, /, *,
                            hidden = False, **kwds) -> dict:
@@ -260,8 +275,6 @@ def main() -> int:
     
     from pprint import pprint as pp
     with RealmSettings() as sets:
-        print(f'{sets.default_filename() = }')
-        print(f'{sets.default_realmlist() = }')
         print(f'{sets.filename = }')
         print(f'{sets.realmlist = }')
         print('Realms:')
