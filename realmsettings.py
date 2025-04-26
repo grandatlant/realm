@@ -4,10 +4,10 @@
 Classes and functions for RealmSettings
 """
 
-__version__ = '1.0.2'
+__version__ = '1.1.0'
 
 __all__ = ['EntryField',
-           'BaseSettings',
+           'DefaultFactory',
            'CoreSettings',
            'RealmSettings']
 
@@ -16,18 +16,54 @@ from os.path import abspath, join as path_join, exists as path_exists
 
 from json import load as json_load, dump as json_dump
 from enum import Enum
+from dataclasses import dataclass, field
 from abc import ABC, abstractmethod
+from contextlib import AbstractContextManager
 
 class EntryField(str, Enum):
     NAME = 'name'
     HIDDEN = 'hidden'
     STRINGS = 'strings'
 
-class BaseSettings(ABC):
-    """BaseSettings ABC interface"""
+class DefaultFactory:
+    @staticmethod
+    def filename():
+        return path_join('.', 'DefaultSettings.json')
+    @staticmethod
+    def realmlist():
+        return path_join('..', 'Data', 'enUS', 'realmlist.wtf')
+    @staticmethod
+    def realms():
+        return dict()
+    @staticmethod
+    def realm_entry(name, strings = None, /, *,
+                    hidden = False, **kwds):
+        """Creates new dict() with keys from EntryField Enum, 
+        filled with function params"""
+        keys = EntryField.NAME, EntryField.HIDDEN, EntryField.STRINGS
+        vals = name, hidden or False, strings or []
+        entry = dict(zip(keys, vals))
+        entry.update(kwds) ## for future usage if I need it
+        return entry
+
+@dataclass()
+class SettingsData:
+    """Dataclass for Settings fields"""
+    _filename: str = field(default_factory=DefaultFactory.filename)
+    _realmlist: str = field(init=False,
+                            #repr=False,
+                            compare=False,
+                            default_factory=DefaultFactory.realmlist)
+    _realms: dict = field(init=False,
+                          #repr=False,
+                          compare=False,
+                          default_factory=DefaultFactory.realms)
+    def __post_init__(self):
+        pass
+
+class ItemAccessBase(ABC):
+    """Item access interface"""
     __slots__ = ()
-    
-    ## Dunder Item access
     
     @abstractmethod
     def __contains__(self, key, /): return False
@@ -38,9 +74,7 @@ class BaseSettings(ABC):
     @abstractmethod
     def __delitem__(self, key, /): pass
     @abstractmethod
-    def __iter__(self, /): return {}.__iter__()
-    
-    # Safe item-getters
+    def __iter__(self, /): return DefaultFactory.realms().__iter__()
     
     @abstractmethod
     def get(self, name, default = None, /): return default
@@ -51,99 +85,85 @@ class BaseSettings(ABC):
     @abstractmethod
     def clear(self, /): return None
 
-    # Service wrapper methods
-
-    @abstractmethod
+class BaseSettings(ItemAccessBase):
+    """BaseSettings ABC interface"""
+    __slots__ = ()
+    
+    #@abstractmethod
     def have_realm(self, name):
         return (name in self)
-    @abstractmethod
+    #@abstractmethod
     def realm_entry(self, name):
-        return self.get(name, {})
-    @abstractmethod
+        return self.get(name, DefaultFactory.realm_entry(name))
+    #@abstractmethod
     def realm_name(self, name):
         return self.realm_entry(name).get(EntryField.NAME, '')
-    @abstractmethod
+    #@abstractmethod
     def realm_hidden(self, name):
         return self.realm_entry(name).get(EntryField.HIDDEN, None)
-    @abstractmethod
+    #@abstractmethod
     def realm_strings(self, name):
         return self.realm_entry(name).get(EntryField.STRINGS, [])
     
     @abstractmethod
     def add(self, name, strings = None):
-        """Add or edit realm with 'name'"""
-        return {}
+        """Add or edit realm with 'name'.
+        Return value: entry link"""
+        return DefaultFactory.realm_entry(name, strings)
     @abstractmethod
     def remove(self, name):
-        """Remove realm 'name' for good"""
+        """Remove realm 'name' for good
+        Return value is removed entry link or False"""
         return self.pop(name, False)
-
+    
     @abstractmethod
     def show(self, name):
         """Unmark realm 'name' as hidden"""
     @abstractmethod
     def hide(self, name):
         """Mark realm 'name' as hidden"""
+    
     @abstractmethod
     def use(self, name):
         """Push realm's 'strings' to 'realmlist.wtf' file"""
+    
     @abstractmethod
     def load(self):
         """Load settings from file"""
     @abstractmethod
     def save(self):
         """Save current settings to file"""
-        
 
-class CoreSettings(BaseSettings):
-    """File-supported RealmSettings with context-managing protocol"""
-    __slots__ = '_filename', '_realmlist', '_realms',
+class SettingsContextManager(AbstractContextManager):
+    """Context manager for settings"""
+    __slots__ = ()
     
-    def __init__(self, filename = None, /, *args, **kwds):
-        """Initial instance fill"""
-        self._filename = filename or self.default_filename()
-        self._realmlist = self.default_realmlist()
-        self._realms = dict()
-        
-    @classmethod
-    def default_filename(cls) -> str:
-        """Returns './{cls.__name__}.json'"""
-        return path_join('.', cls.__name__+'.json')
-    @staticmethod
-    def default_realmlist() -> str:
-        """Returns '../Data/enUS/realmlist.wtf'"""
-        return path_join('..', 'Data', 'enUS', 'realmlist.wtf')
-    @staticmethod
-    def create_realm_entry(name, strings = None, /, *,
-                           hidden = False, **kwds) -> dict:
-        """Creates new dict() with keys from EntryField Enum, 
-        filled with function params"""
-        keys = EntryField.NAME, EntryField.HIDDEN, EntryField.STRINGS
-        vals = name, hidden or False, strings or []
-        entry = dict(zip(keys, vals))
-        entry.update(kwds) ## for future usage if I need it
-        return entry
+    def __enter__(self):
+        self.load()
+        return self
+    
+    def __exit__(self, exc_type = None, exc_value = None, traceback = None):
+        if not any((exc_type, exc_value, traceback)):
+            self.save()
+        return None
 
-    ## Propertys
+class CoreSettings(SettingsData, BaseSettings, SettingsContextManager):
+    """File-supported RealmSettings with context-managing protocol"""
     
     @property
     def realms(self):
         return self._realms
-    
     @property
     def filename(self):
         return self._filename
-    
     @property
     def realmlist(self):
-        return self._realmlist #abspath(self._realmlist)
+        return self._realmlist
     @realmlist.setter
     def realmlist(self, value):
         ## TODO: Validate ?
-        self._realmlist = value #abspath(value)
+        self._realmlist = value
 
-    ## Delegated methods
-    
     def __contains__(self, key, /):
         return self.realms.__contains__(key)
     def __getitem__(self, key, /):
@@ -163,23 +183,9 @@ class CoreSettings(BaseSettings):
         return self.realms.popitem()
     def clear(self):
         return self.realms.clear()
-
-    ## Service methods
-    
-    def have_realm(self, name):
-        return super().have_realm(name)
-    def realm_entry(self, name):
-        return super().realm_entry(name)
-    def realm_name(self, name):
-        return super().realm_name(name)
-    def realm_strings(self, name):
-        return super().realm_strings(name)
-    def realm_hidden(self, name):
-        return super().realm_hidden(name)
     
     def add(self, name, strings = None):
-        entry = super().add(name) or {}
-        entry.update(self.create_realm_entry(name, strings))
+        entry = super().add(name, strings)
         self.realms[name] = entry
         return entry
     def remove(self, name):
@@ -214,7 +220,7 @@ class CoreSettings(BaseSettings):
                 sets = dict(json_load(f))
                 self.realmlist = sets.get('realmlist', self.realmlist)
                 self.realms.clear()
-                self.realms.update(sets.get('realms', dict()))
+                self.realms.update(sets.get('realms', DefaultFactory.realms()))
         except OSError as ex:
             print(f"Can't load {self._filename}: {ex}", file = errfile)
             return False
@@ -240,15 +246,6 @@ class CoreSettings(BaseSettings):
             sets = None
             ex = None
 
-    ## Context methods
-    
-    def __enter__(self):
-        self.load()
-        return self
-    def __exit__(self, exc_type = None, exc_value = None, traceback = None):
-        if not any((exc_type, exc_value, traceback)):
-            self.save()
-
 class RealmSettings(CoreSettings):
     """Settings with advanced features besides CoreSettings"""
     __slots__ = ()
@@ -259,22 +256,37 @@ def main() -> int:
     if not __debug__: return 0
     
     from pprint import pprint as pp
+
     with RealmSettings() as sets:
-        print(f'{sets.default_filename() = }')
-        print(f'{sets.default_realmlist() = }')
         print(f'{sets.filename = }')
         print(f'{sets.realmlist = }')
         print('Realms:')
         pp(sets.realms)
         
         print('Processing default realms...')
+        print('Add realm "warmane"...')
         sets.add('warmane', ['set realmlist logon.warmane.com'])
+        print('Add realm "wowcircle"...')
         sets.add('wowcircle', ['set realmlist logon.wowcircle.me'])
+        print('Add realm "uwow"...')
         sets.add('uwow', ['set realmlist login.uwow.biz',
                           'set realmlist login2.uwow.biz',
                           'set realmlist login3.uwow.biz',
                           'set realmlist login4.uwow.biz'])
+        print('Hide realm "uwow"...')
         sets.hide('uwow')
+        print('Test with "dummy" realm:')
+        print('Add...')
+        sets.add('dummy', ['set realmlist localhost'])
+        print('Hide...')
+        sets.hide('dummy')
+        print('Show...')
+        sets.show('dummy')
+        print('Remove...')
+        sets.remove('dummy')
+        print('"dummy" test ok.')
+        #print('Use "warmane" realm.')
+        #sets.use('warmane')
         print('Settings filled.')
         pp(sets.realms)
         
