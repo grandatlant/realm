@@ -4,11 +4,14 @@
 Classes and functions for RealmSettings
 """
 
-__version__ = '1.1.0'
+__version__ = '1.1.1'
 
 __all__ = ['EntryField',
            'DefaultFactory',
+           'SettingsData',
+           'BaseSettings',
            'CoreSettings',
+           'SettingsContextManager',
            'RealmSettings']
 
 from sys import stderr as errfile, exit as sys_exit
@@ -26,6 +29,8 @@ class EntryField(str, Enum):
     STRINGS = 'strings'
 
 class DefaultFactory:
+    """Factory methods for module use"""
+    __slots__ = ()
     @staticmethod
     def filename():
         return path_join('.', 'DefaultSettings.json')
@@ -89,67 +94,46 @@ class BaseSettings(ItemAccessBase):
     """BaseSettings ABC interface"""
     __slots__ = ()
     
-    #@abstractmethod
-    def have_realm(self, name):
+    def have_realm(self, name, /):
         return (name in self)
-    #@abstractmethod
-    def realm_entry(self, name):
+    def realm_entry(self, name, /):
         return self.get(name, DefaultFactory.realm_entry(name))
-    #@abstractmethod
-    def realm_name(self, name):
+    def realm_name(self, name, /):
         return self.realm_entry(name).get(EntryField.NAME, '')
-    #@abstractmethod
-    def realm_hidden(self, name):
+    def realm_hidden(self, name, /):
         return self.realm_entry(name).get(EntryField.HIDDEN, None)
-    #@abstractmethod
-    def realm_strings(self, name):
+    def realm_strings(self, name, /):
         return self.realm_entry(name).get(EntryField.STRINGS, [])
     
-    @abstractmethod
-    def add(self, name, strings = None):
+    def add(self, name, strings = None, /):
         """Add or edit realm with 'name'.
         Return value: entry link"""
         return DefaultFactory.realm_entry(name, strings)
-    @abstractmethod
-    def remove(self, name):
+    def remove(self, name, /):
         """Remove realm 'name' for good
-        Return value is removed entry link or False"""
+        Return value is removed entry link or False if failed"""
         return self.pop(name, False)
     
     @abstractmethod
-    def show(self, name):
+    def show(self, name, /):
         """Unmark realm 'name' as hidden"""
     @abstractmethod
-    def hide(self, name):
+    def hide(self, name, /):
         """Mark realm 'name' as hidden"""
     
     @abstractmethod
-    def use(self, name):
+    def use(self, name, /):
         """Push realm's 'strings' to 'realmlist.wtf' file"""
     
     @abstractmethod
-    def load(self):
+    def load(self, /):
         """Load settings from file"""
     @abstractmethod
-    def save(self):
+    def save(self, /):
         """Save current settings to file"""
 
-class SettingsContextManager(AbstractContextManager):
-    """Context manager for settings"""
-    __slots__ = ()
-    
-    def __enter__(self):
-        self.load()
-        return self
-    
-    def __exit__(self, exc_type = None, exc_value = None, traceback = None):
-        if not any((exc_type, exc_value, traceback)):
-            self.save()
-        return None
-
-class CoreSettings(SettingsData, BaseSettings, SettingsContextManager):
-    """File-supported RealmSettings with context-managing protocol"""
-    
+class CoreSettings(SettingsData, BaseSettings):
+    """File-supported RealmSettings"""
     @property
     def realms(self):
         return self._realms
@@ -185,10 +169,14 @@ class CoreSettings(SettingsData, BaseSettings, SettingsContextManager):
         return self.realms.clear()
     
     def add(self, name, strings = None):
+        """Add or edit realm with 'name'.
+        Return value: entry link"""
         entry = super().add(name, strings)
         self.realms[name] = entry
         return entry
     def remove(self, name):
+        """Remove realm 'name' for good
+        Return value is removed entry link or False if failed"""
         return super().remove(name)
     
     def show(self, name):
@@ -246,9 +234,22 @@ class CoreSettings(SettingsData, BaseSettings, SettingsContextManager):
             sets = None
             ex = None
 
-class RealmSettings(CoreSettings):
-    """Settings with advanced features besides CoreSettings"""
+class SettingsContextManager(AbstractContextManager):
+    """Context manager for settings"""
     __slots__ = ()
+    
+    def __enter__(self):
+        self.load()
+        return self
+    
+    def __exit__(self, exc_type = None, exc_value = None, traceback = None):
+        if not any((exc_type, exc_value, traceback)):
+            self.save()
+        return None
+
+class RealmSettings(CoreSettings, SettingsContextManager):
+    """Settings with advanced features besides Core:
+    context managing protocol with load-save methods apply"""
     
 
 ##  MAIN ENTRY POINT  ##
