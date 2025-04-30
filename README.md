@@ -6,3 +6,6 @@
 #### Or
 - chmod +x ./realm.py && ./realm.py --help
 
+#### Starting from 1.1.1 - pipes enabled for next usecase:
+- ./realm.py list --hidden | ./realm.py show
+
