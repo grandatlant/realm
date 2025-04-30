@@ -51,7 +51,7 @@ positional arguments:
 optional arguments:
   -h, --help  show this help message and exit
 
-usage: realm.py show [-h] names [names ...]
+usage: realm.py show [-h] [names ...]
 
 positional arguments:
   names       name of hidden realm to show. Use "list" to choose
@@ -59,7 +59,7 @@ positional arguments:
 optional arguments:
   -h, --help  show this help message and exit
 
-usage: realm.py hide [-h] names [names ...]
+usage: realm.py hide [-h] [names ...]
 
 positional arguments:
   names       name of realm to hide. Use "list" to choose
@@ -67,7 +67,7 @@ positional arguments:
 optional arguments:
   -h, --help  show this help message and exit
 
-usage: realm.py remove [-h] [-f] names [names ...]
+usage: realm.py remove [-h] [-f] [names ...]
 
 positional arguments:
   names        name of realm to permanently delete. Use "list" to choose
