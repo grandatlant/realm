@@ -12,7 +12,7 @@ from sys import exit as sys_exit
 from realmsettings import RealmSettings
 from clitools import confirm_action, readlines
 
-VERSION = '1.0.2'
+VERSION = '1.1.0'
 DEF_SETTINGS_FILENAME = path_join('.', 'realm.json')
 
 ## Helper fucntions
@@ -53,7 +53,9 @@ def _list(args):
             else:
                 if args.hidden:
                     continue
-            hidden_indicator = ('(hidden)' if sets.realm_hidden(name) else '')
+            hidden_indicator = ('(hidden)'
+                                if args.all and sets.realm_hidden(name)
+                                else '')
             name_to_print = f'{hidden_indicator}{name}'
             print(name_to_print)
             if args.long:
@@ -115,7 +117,8 @@ def _use(args):
 @check_settings(path_exists)
 def _show(args):
     with RealmSettings(args.settings) as sets:
-        for name in args.names:
+        names = args.names if args.names else readlines()
+        for name in names:
             if sets.have_realm(name) and sets.show(name):
                 verbose_print('Realm '+name+' marked as non-hidden',
                               args.verbosity)
@@ -127,7 +130,8 @@ def _show(args):
 @check_settings(path_exists)
 def _hide(args):
     with RealmSettings(args.settings) as sets:
-        for name in args.names:
+        names = args.names if args.names else readlines()
+        for name in names:
             if sets.have_realm(name) and sets.hide(name):
                 verbose_print('Realm '+name+' marked as hidden',
                               args.verbosity)
@@ -139,13 +143,15 @@ def _hide(args):
 @check_settings(path_exists)
 def _remove(args):
     with RealmSettings(args.settings) as sets:
-        for name in args.names:
+        names = args.names if args.names else readlines()
+        for name in names:
             if sets.have_realm(name):
                 confirmed = False
                 if args.force:
                     confirmed = True
                 else:
-                    if confirm_action('Confirm removing realm "'+name+'"?(y/n)'):
+                    if args.verbosity and confirm_action(
+                        'Confirm removing realm "'+name+'"?(y/n)'):
                         confirmed = True
                 if confirmed and sets.remove(name):
                     verbose_print('Realm '+name+' removed.',
@@ -226,7 +232,7 @@ def parse_cli_args():
     command = subs.add_parser('show',
                               help='show hidden realms')
     command.add_argument('names',
-                         nargs='+',
+                         nargs='*',
                          help='name of hidden realm to show. '
                          'Use "list" to choose')
     command.set_defaults(func = _show)
@@ -236,7 +242,7 @@ def parse_cli_args():
     command = subs.add_parser('hide',
                               help = 'hide realms')
     command.add_argument('names',
-                         nargs = '+',
+                         nargs = '*',
                          help = 'name of realm to hide. '
                          'Use "list" to choose')
     command.set_defaults(func = _hide)
@@ -249,7 +255,7 @@ def parse_cli_args():
                          action = 'store_true', default = False,
                          help = 'force deletion operation, no prompt')
     command.add_argument('names',
-                         nargs = '+',
+                         nargs = '*',
                          help = 'name of realm to permanently delete. '
                          'Use "list" to choose')
     command.set_defaults(func = _remove)
