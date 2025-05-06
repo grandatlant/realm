@@ -4,8 +4,22 @@
 Realm changing module for World of Warcraft,
 using tkinter
 """
+
+import os
 import sys
 import tkinter as tk
+
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
+__version__ = '1.0.0'
+__copyright__ = 'Copyright (C) 2025 grandatlant'
+
+DEF_SETTINGS_FILENAME = os.getenv('DEF_SETTINGS_FILENAME',
+                                  os.path.join('.','realm.json'))
 
 
 def build_ui(parent):
