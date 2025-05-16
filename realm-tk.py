@@ -9,11 +9,18 @@ import os
 import sys
 import tkinter as tk
 
+import logging
+log = logging.getLogger(__name__)
+
 try:
     from dotenv import load_dotenv
-    load_dotenv()
 except ImportError:
-    pass
+    def load_dotenv():
+        #no-op, log only. Default environment
+        log.warning('python-dotenv load failed. Using default environment')
+
+# Environment update first
+load_dotenv()
 
 __version__ = '1.0.0'
 __copyright__ = 'Copyright (C) 2025 grandatlant'
