@@ -5,37 +5,67 @@ Realm changing module for World of Warcraft,
 using tkinter
 """
 
+__version__ = '1.0.0'
+__copyright__ = 'Copyright (C) 2025 grandatlant'
+
 import os
 import sys
-import tkinter as tk
-
 import logging
-log = logging.getLogger(__name__)
+import tkinter as tk
 
 try:
     from dotenv import load_dotenv
 except ImportError:
     def load_dotenv():
-        #no-op, log only. Default environment
-        log.warning('python-dotenv load failed. Using default environment')
+        '''no-op, default environment'''
 
 # Environment update first
 load_dotenv()
 
-__version__ = '1.0.0'
-__copyright__ = 'Copyright (C) 2025 grandatlant'
+log = configure_logger(logging.DEBUG)
 
 DEF_SETTINGS_FILENAME = os.getenv('DEF_SETTINGS_FILENAME',
                                   os.path.join('.','realm.json'))
 
 def use_btn_cmd():
-    pass
+    log.debug('Use Button command')
 def add_btn_cmd():
-    pass
+    log.debug('Add Button command')
 def rmv_btn_cmd():
-    pass
+    log.debug('Remove Button command')
 def clr_btn_cmd():
-    pass
+    log.debug('Clear Button command')
+
+def configure_logger(level=logging.ERROR, **kwds):
+    '''Configure logging basicConfig and return logger to use in module'''
+    # Settings for default environment
+    log_config = {
+        'style': '{',
+        'format': '{levelname}: {message}',
+        }
+    
+    #format="%(asctime)s:%(levelname)s:%(name)s:%(funcName)s:%(message)s",
+    log_style = os.getenv('LOG_STYLE', '{')
+    log_format = os.getenv('LOG_FORMAT', None)
+    if log_format:
+        log_config['style'] = log_style
+        log_config['format'] = log_format
+        
+    log_file_name = os.getenv('LOG_FILE_NAME', None)
+    log_file_mode = os.getenv('LOG_FILE_MODE', 'a')
+    if log_file_name:
+        log_config['filename'] = log_file_name
+        log_config['filemode'] = log_file_mode
+
+    # Read all possible other kwargs to update config.
+    # force, handlers, or all others filled here can be overriden
+    log_config.update(kwds)
+    # prevent level duplication, direct transfer to logging.basicConfig
+    log_config.pop('level', None)
+    
+    logging.basicConfig(level=level, **log_config)
+    
+    return logging.getLogger(__name__)
 
 def build_ui(parent):
     main_frame = tk.Frame(parent, relief='ridge', borderwidth=5)

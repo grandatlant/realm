@@ -1,0 +1,9 @@
+## Filename for settings
+DEF_SETTINGS_FILENAME = ./realm.json
+
+## Logging setup
+LOG_STYLE = {
+LOG_FORMAT = {asctime}:{levelname}:{name}:{filename}, {funcName}(), line {lineno}: "{message}"
+#LOG_FILE_NAME = realm.log
+#LOG_FILE_MODE = a
+
