@@ -12,8 +12,7 @@ import os
 import sys
 import tkinter as tk
 
-import logging
-log = logging.getLogger()#__name__)#root logger by default. Configured later
+from realmlogging import log
 
 try:
     from dotenv import load_dotenv
@@ -36,36 +35,6 @@ def rmv_btn_cmd():
     log.debug('Remove Button command')
 def clr_btn_cmd():
     log.debug('Clear Button command')
-
-def configure_logger(level=logging.ERROR, **kwds):
-    '''Configure logging basicConfig and return logger to use in module'''
-    # Settings for default environment
-    log_config = {
-        'level': level,
-        'style': '{',
-        'format': '{levelname}: {message}',
-        #format="%(asctime)s:%(levelname)s:%(name)s:%(funcName)s:%(message)s",
-        }
-    
-    log_style = os.getenv('LOG_STYLE', '{')
-    log_format = os.getenv('LOG_FORMAT', None)
-    if log_format:
-        log_config['style'] = log_style
-        log_config['format'] = log_format
-        
-    log_file_name = os.getenv('LOG_FILE_NAME', None)
-    log_file_mode = os.getenv('LOG_FILE_MODE', 'a')
-    if log_file_name:
-        log_config['filename'] = log_file_name
-        log_config['filemode'] = log_file_mode
-
-    # Read all possible other kwargs to update config.
-    # force, handlers, or all others filled here can be overriden
-    log_config.update(kwds)
-    
-    logging.basicConfig(**log_config)
-    
-    return logging.getLogger(__name__)
 
 def build_ui(parent):
     main_frame = tk.Frame(parent, relief='ridge', borderwidth=5)
@@ -101,6 +70,4 @@ def main(args=None):
     return 0
 
 if __name__ == '__main__':
-    log_lvl = logging.DEBUG if __debug__ else logging.WARNING
-    log = configure_logger(log_lvl)
     sys.exit(main(sys.argv))
