@@ -4,6 +4,9 @@
 Realm changing module for World of Warcraft
 """
 
+__version__ = '1.1.2'
+__copyright__ = 'Copyright (C) 2025 grandatlant'
+
 from argparse import ArgumentParser
 from functools import wraps
 from sys import exit as sys_exit
@@ -11,18 +14,20 @@ from sys import exit as sys_exit
 from realmsettings import RealmSettings
 from clitools import confirm_action, readlines
 
-import os
 try:
     from dotenv import load_dotenv
-    load_dotenv()
 except ImportError:
-    pass
+    def load_dotenv():
+        """dotenv module is missing. no-op, default environment."""
+        return None#False##TODO: Think about it
 
-__version__ = '1.1.2'
-__copyright__ = 'Copyright (C) 2025 grandatlant'
+# Environment update first
+load_dotenv()
 
-DEF_SETTINGS_FILENAME = os.getenv('DEF_SETTINGS_FILENAME',
-                                  os.path.join('.','realm.json'))
+DEF_SETTINGS_FILENAME = os.getenv(
+    'DEF_SETTINGS_FILENAME',
+    os.path.join('.','realm.json')
+)
 
 ## Helper fucntions
 
@@ -48,7 +53,7 @@ def check_settings(check_func):
 ##  CLI stateless subroutines  ##
 
 def _default(args):
-    # no command specified. return soft error status
+    """No command specified. return soft error status."""
     return 1
 
 @check_settings(os.path.exists)

@@ -7,22 +7,22 @@ Realm logging module
 __version__ = '1.0.0'
 __copyright__ = 'Copyright (C) 2025 grandatlant'
 
-import os
-import logging
-
 __all__ = [
     'logging',
     'log',
     'log_lvl',
     'configure_logger',
-    ]
+]
+
+import os
+import logging
 
 try:
     from dotenv import load_dotenv
 except ImportError:
     def load_dotenv():
-        '''no-op, default environment'''
-        logging.warning('Failed to import dotenv. Using default environment')
+        """dotenv module is missing. no-op, default environment."""
+        return None#False##TODO: Think about it
 
 # Environment update first
 load_dotenv()

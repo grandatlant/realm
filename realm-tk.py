@@ -5,7 +5,7 @@ Realm changing module for World of Warcraft,
 using tkinter
 """
 
-__version__ = '1.0.0'
+__version__ = '1.0.1'
 __copyright__ = 'Copyright (C) 2025 grandatlant'
 
 import os
@@ -18,8 +18,9 @@ try:
     from dotenv import load_dotenv
 except ImportError:
     def load_dotenv():
-        '''no-op, default environment'''
+        """dotenv module is missing. no-op, default environment."""
         log.warning('Failed to import dotenv. Using default environment')
+        return None#False##TODO: Think about it
 
 # Environment update first
 load_dotenv()
