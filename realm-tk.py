@@ -28,45 +28,90 @@ load_dotenv()
 DEF_SETTINGS_FILENAME = os.getenv('DEF_SETTINGS_FILENAME',
                                   os.path.join('.','realm.json'))
 
-def use_btn_cmd():
-    log.debug('Use Button command')
-def add_btn_cmd():
-    log.debug('Add Button command')
-def rmv_btn_cmd():
-    log.debug('Remove Button command')
-def clr_btn_cmd():
-    log.debug('Clear Button command')
+class MainFrame:
+    """Main GUI frame class."""
+    def __init__(self, parent, *args, **kwds):
+        #super().__init__(parent, *args, **kwds)
+        self.parent = parent
+        
+        self.main_frame = tk.Frame(
+            self.parent,
+            relief='ridge',
+            borderwidth=5,
+        )
+        self.main_frame.pack(fill='both', expand=1)
+        
+        self.label = tk.Label(
+            self.main_frame,
+            text="--- Main frame for UI ---",
+        )
+        self.label.pack(fill='x', expand=1)
 
-def build_ui(parent):
-    main_frame = tk.Frame(parent, relief='ridge', borderwidth=5)
-    main_frame.pack(fill='both', expand=1)
-    
-    label = tk.Label(main_frame, text="--- Main frame for UI ---")
-    label.pack(fill='x', expand=1)
+        self.btn_frame = tk.Frame(self.main_frame)
+        self.btn_frame.pack(fill='x', expand=1)
+        
+        self.use_btn = tk.Button(
+            self.btn_frame,
+            text='Use',
+            command=self.use_btn_cmd,
+        )
+        self.use_btn.grid(row=1, column=1)
+        self.add_btn = tk.Button(
+            self.btn_frame,
+            text='Add',
+            command=self.add_btn_cmd,
+        )
+        self.add_btn.grid(row=1, column=2)
+        self.rmv_btn = tk.Button(
+            self.btn_frame,
+            text='Remove',
+            command=self.rmv_btn_cmd,
+        )
+        self.rmv_btn.grid(row=1, column=3)
+        self.clr_btn = tk.Button(
+            self.btn_frame,
+            text='Clear',
+            command=self.clr_btn_cmd,
+        )
+        self.clr_btn.grid(row=1, column=4)
 
-    btn_frame = tk.Frame(main_frame)
-    btn_frame.pack(fill='x', expand=1)
-    use_btn = tk.Button(btn_frame, text='Use', command=use_btn_cmd)
-    use_btn.grid(row=1, column=1)
-    add_btn = tk.Button(btn_frame, text='Add', command=add_btn_cmd)
-    add_btn.grid(row=1, column=2)
-    rmv_btn = tk.Button(btn_frame, text='Remove', command=rmv_btn_cmd)
-    rmv_btn.grid(row=1, column=3)
-    clr_btn = tk.Button(btn_frame, text='Clear', command=clr_btn_cmd)
-    clr_btn.grid(row=1, column=4)
+        self.lst_frame = tk.Frame(self.main_frame)
+        self.lst_frame.pack(fill='both', expand=1)
 
-    lst_frame = tk.Frame(main_frame)
-    lst_frame.pack(fill='both', expand=1)
-    
-    exit_button = tk.Button(main_frame, text="Exit", command=parent.destroy)
-    exit_button.pack(side='bottom')
-    
-    return main_frame
+        self.realm_listbox = tk.Listbox(
+            self.lst_frame,
+            listvariable=tk.Variable(
+                value=['1', '2', 'foo', 'bar'],
+            ),
+        )
+        self.realm_listbox.pack(fill='both')
+        
+        self.exit_button = tk.Button(
+            self.main_frame,
+            text="Exit",
+            command=self.parent.destroy,
+        )
+        self.exit_button.pack(side='bottom')
+        
+    def use_btn_cmd(self):
+        log.debug('Use Button command')
+        
+    def add_btn_cmd(self):
+        log.debug('Add Button command')
+        
+    def rmv_btn_cmd(self):
+        log.debug('Remove Button command')
+        
+    def clr_btn_cmd(self):
+        log.debug('Clear Button command')
+        
+
 
 ##  MAIN ENTRY POINT
 def main(args=None):
     root = tk.Tk()
-    build_ui(root)
+    root.title('realm-tk')
+    MainFrame(root)
     root.mainloop()
     return 0
 
