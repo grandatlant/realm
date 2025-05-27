@@ -1,0 +1,12 @@
+## Filename for default settings
+DEF_SETTINGS_FILENAME = ./realm.json
+
+## Logging setup
+# Default style '{', can be changed, see help('logging.Formatter') for info
+#LOG_STYLE = {
+LOG_FORMAT = {asctime}:{levelname}:{name}:{filename}, {funcName}(), line {lineno}: "{message}"
+# Default stream used if LOG_FILE_NAME is not specified
+LOG_FILE_NAME = realm.log
+# Default mode 'a', can be changed, see help(open) for info
+#LOG_FILE_MODE = a
+

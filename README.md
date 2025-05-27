@@ -9,3 +9,10 @@
 #### Starting from 1.1.1 - pipes enabled for next usecase:
 - ./realm.py list --hidden | ./realm.py show
 
+## New in 1.1.2b
+#### realm-tk.py - minimalistic tkinter GUI app
+- chmod +x ./realm-tk.py && ./realm-tk.py
+
+- "Use" function available for chosen realm to play
+- "Remove" function available for realm hiding from list
+- "Add" and "Clear" functions are 'NotImplemented' yet

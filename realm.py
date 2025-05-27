@@ -4,16 +4,30 @@
 Realm changing module for World of Warcraft
 """
 
+__version__ = '1.1.2'
+__copyright__ = 'Copyright (C) 2025 grandatlant'
+
 from argparse import ArgumentParser
 from functools import wraps
-from os.path import exists as path_exists, join as path_join
 from sys import exit as sys_exit
 
 from realmsettings import RealmSettings
 from clitools import confirm_action, readlines
 
-VERSION = '1.1.1'
-DEF_SETTINGS_FILENAME = path_join('.', 'realm.json')
+try:
+    from dotenv import load_dotenv
+except ImportError:
+    def load_dotenv():
+        """dotenv module is missing. no-op, default environment."""
+        return None#False##TODO: Think about it
+
+# Environment update first
+load_dotenv()
+
+DEF_SETTINGS_FILENAME = os.getenv(
+    'DEF_SETTINGS_FILENAME',
+    os.path.join('.','realm.json')
+)
 
 ## Helper fucntions
 
@@ -39,10 +53,10 @@ def check_settings(check_func):
 ##  CLI stateless subroutines  ##
 
 def _default(args):
-    # no command specified. return soft error status
+    """No command specified. return soft error status."""
     return 1
 
-@check_settings(path_exists)
+@check_settings(os.path.exists)
 def _list(args):    
     with RealmSettings(args.settings) as sets:
         for name in sets.realms:
@@ -64,7 +78,7 @@ def _list(args):
                     print(f'{prefix}{string}')
     return 0
 
-#@check_settings(path_exists)
+#@check_settings(os.path.exists)
 def _add(args):
     with RealmSettings(args.settings) as sets:
         name = args.name
@@ -88,10 +102,10 @@ def _add(args):
     
     return 0
 
-@check_settings(path_exists)
+@check_settings(os.path.exists)
 def _use(args):
     with RealmSettings(args.settings) as sets:
-        while not path_exists(sets.realmlist):
+        while not os.path.exists(sets.realmlist):
             if confirm_action('Path "'+sets.realmlist+'" '
                               'to "realmlist.wtf" is not exists. '
                               'Change it? (y/n)'):
@@ -114,7 +128,7 @@ def _use(args):
             return 1
     return 0
 
-@check_settings(path_exists)
+@check_settings(os.path.exists)
 def _show(args):
     with RealmSettings(args.settings) as sets:
         names = args.names if args.names else readlines()
@@ -127,7 +141,7 @@ def _show(args):
                            args.verbosity)
     return 0
 
-@check_settings(path_exists)
+@check_settings(os.path.exists)
 def _hide(args):
     with RealmSettings(args.settings) as sets:
         names = args.names if args.names else readlines()
@@ -140,7 +154,7 @@ def _hide(args):
                            args.verbosity)
     return 0
 
-@check_settings(path_exists)
+@check_settings(os.path.exists)
 def _remove(args):
     with RealmSettings(args.settings) as sets:
         names = args.names if args.names else readlines()
@@ -165,12 +179,12 @@ def parse_cli_args():
     
     parser = ArgumentParser(description = __doc__,
                             allow_abbrev = False,
-                            epilog = 'Copyright (C) 2025 grandatlant')
+                            epilog = __copyright__)
     parser.set_defaults(func = _default)
     
     parser.add_argument('--version',
                         action = 'version',
-                        version = f'%(prog)s {VERSION}')
+                        version = f'%(prog)s {__version__}')
     parser.add_argument('-v','--verbose',
                         dest = 'verbosity',
                         action = 'count',
@@ -265,6 +279,7 @@ def parse_cli_args():
 
 if __name__ == '__main__':
     args = parse_cli_args()
+    #if __debug__: print(f'{vars(os.environ) = }')
     if __debug__: print(f'{vars(args) = }')
     result = args.func(args)
     if __debug__: print(f'{result = }')
