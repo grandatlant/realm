@@ -8,11 +8,17 @@ using tkinter
 __version__ = '1.0.1'
 __copyright__ = 'Copyright (C) 2025 grandatlant'
 
+__all__ = [
+    'MainFrame',
+]
+
 import os
 import sys
+import atexit
 import tkinter as tk
 
 from realmlogging import log
+from realmsettings import CoreSettings
 
 try:
     from dotenv import load_dotenv
@@ -27,27 +33,60 @@ load_dotenv()
 
 DEF_SETTINGS_FILENAME = os.getenv('DEF_SETTINGS_FILENAME',
                                   os.path.join('.','realm.json'))
+_settings_filename = DEF_SETTINGS_FILENAME
+_settings_instance = CoreSettings(_settings_filename)
 
 class MainFrame:
     """Main GUI frame class."""
-    def __init__(self, parent, *args, **kwds):
+    @property
+    def realm_list(self) -> list:
+        """List of non-hidden realms in settings."""
+        return [
+            name
+            for name in self.settings
+            if not self.settings.realm_hidden(name)
+        ]
+
+    @property
+    def list_variable(self) -> tk.Variable:
+        """String representation of realm_list property for tkinter."""
+        return tk.Variable(
+            value=[
+                ''.join((
+                    name,
+                    ' (',
+                    r'\n'.join(self.settings.realm_strings(name)),
+                    ')',
+                ))
+                for name in self.realm_list
+                #if name
+            ],
+        )
+    
+    def __init__(
+        self,
+        parent: tk.Misc,
+        settings = _settings_instance,
+        *args, **kwds
+    ) -> None:
         #super().__init__(parent, *args, **kwds)
         self.parent = parent
+        self.settings = settings# or RealmSettings(DEF_SETTINGS_FILENAME)
         
-        self.main_frame = tk.Frame(
+        self.frame = tk.Frame(
             self.parent,
             relief='ridge',
             borderwidth=5,
         )
-        self.main_frame.pack(fill='both', expand=1)
+        self.frame.pack(fill='both', expand=1)
         
-        self.label = tk.Label(
-            self.main_frame,
+        '''self.label = tk.Label(
+            self.frame,
             text="--- Main frame for UI ---",
         )
-        self.label.pack(fill='x', expand=1)
+        self.label.pack(fill='x', expand=1)'''
 
-        self.btn_frame = tk.Frame(self.main_frame)
+        self.btn_frame = tk.Frame(self.frame)
         self.btn_frame.pack(fill='x', expand=1)
         
         self.use_btn = tk.Button(
@@ -75,46 +114,91 @@ class MainFrame:
         )
         self.clr_btn.grid(row=1, column=4)
 
-        self.lst_frame = tk.Frame(self.main_frame)
+        self.lst_frame = tk.Frame(self.frame)
         self.lst_frame.pack(fill='both', expand=1)
-
+        
         self.realm_listbox = tk.Listbox(
             self.lst_frame,
-            listvariable=tk.Variable(
-                value=['1', '2', 'foo', 'bar'],
-            ),
+            listvariable=self.list_variable,
         )
         self.realm_listbox.pack(fill='both')
         
         self.exit_button = tk.Button(
-            self.main_frame,
+            self.frame,
             text="Exit",
             command=self.parent.destroy,
         )
         self.exit_button.pack(side='bottom', fill='x')
+
+    def _selected_realm_name(self):
+        selection = self.realm_listbox.curselection()
+        if selection:
+            selected_index = selection[0]
+            selected_name = self.realm_list[selected_index]
+            return selected_name
+        return None
         
     def use_btn_cmd(self):
         log.debug('Use Button command')
-        print(self.realm_listbox.curselection())
+        selected_name = self._selected_realm_name()
+        if selected_name:
+            if self.settings.use(selected_name):
+                log.debug('Active realm "%s" used.' % selected_name)
+            else:
+                log.error('Failed to use realm "%s".' % selected_name)
+        else:
+            log.debug('No selection, skip command.')
         
     def add_btn_cmd(self):
         log.debug('Add Button command')
         
     def rmv_btn_cmd(self):
         log.debug('Remove Button command')
+        selected_name = self._selected_realm_name()
+        if selected_name:
+            if self.settings.hide(selected_name):
+                log.debug('Active realm "%s" made hidden.' % selected_name)
+                # update list data
+                self.realm_listbox.configure(listvariable=self.list_variable)
+            else:
+                log.error('Failed to hide realm "%s".' % selected_name)
+        else:
+            log.debug('No selection, skip command.')
         
     def clr_btn_cmd(self):
         log.debug('Clear Button command')
         
+def load_settings():
+    """Manual loading procedure."""
+    log.debug('load_settings() call')
+    return _settings_instance.load()
 
+#@atexit.register
+def save_settings():
+    """Mock. Saving @atexit temporary disabled."""
+    log.debug('save_settings() call')
+    return _settings_instance.save()
 
 ##  MAIN ENTRY POINT
 def main(args=None):
+    if not load_settings():
+        # Next processing is useless for now.
+        # Abort script execution.
+        log.fatal("Failed to load realm settings.")
+        return -1
     root = tk.Tk()
     root.title('realm-tk')
     MainFrame(root)
     root.mainloop()
+    if not save_settings():
+        log.fatal("Failed to save realm settings.")
+        return -1
     return 0
+
+try:
+    load_settings()
+except Exception:
+    pass
 
 if __name__ == '__main__':
     sys.exit(main(sys.argv))
