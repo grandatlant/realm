@@ -91,10 +91,11 @@ class MainFrame:
             text="Exit",
             command=self.parent.destroy,
         )
-        self.exit_button.pack(side='bottom')
+        self.exit_button.pack(side='bottom', fill='x')
         
     def use_btn_cmd(self):
         log.debug('Use Button command')
+        print(self.realm_listbox.curselection())
         
     def add_btn_cmd(self):
         log.debug('Add Button command')
