@@ -5,7 +5,7 @@ Realm changing module for World of Warcraft,
 using tkinter
 """
 
-__version__ = '1.0.1'
+__version__ = '1.1.0'
 __copyright__ = 'Copyright (C) 2025 grandatlant'
 
 __all__ = [
@@ -195,10 +195,13 @@ def main(args=None):
         return -1
     return 0
 
-try:
-    load_settings()
-except Exception:
-    pass
-
 if __name__ == '__main__':
     sys.exit(main(sys.argv))
+'''
+else:
+    try:
+        if load_settings():
+            atexit.register(save_settings)
+    except Exception:
+        pass
+'''
