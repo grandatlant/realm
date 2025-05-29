@@ -15,9 +15,11 @@ __all__ = [
 import os
 import sys
 import atexit
+import time
 
 from realmlogging import log
 from realmsettings import CoreSettings
+from wrappers import log_perf_counter, wrap_with, wrap_with_calls
 
 from PyQt5.QtCore import (
     Qt,
@@ -138,36 +140,28 @@ class MainWindow:
     def clr_btn_cmd(self):
         log.debug('Clear Button command')
     
-        
+@log_perf_counter
 def load_settings():
     """Manual loading procedure."""
-    log.debug('load_settings() call')
     return _settings_instance.load()
 
 #@atexit.register
+@log_perf_counter
 def save_settings():
     """Mock. Saving @atexit temporary disabled."""
-    log.debug('save_settings() call')
     return _settings_instance.save()
 
+   
 ##  MAIN ENTRY POINT
+@wrap_with(load_settings, save_settings,
+           return_filter_func = lambda status: not status)
 def main(args=None):
-    if not load_settings():
-        # Next processing is useless for now.
-        # Abort script execution.
-        log.fatal("Failed to load realm settings.")
-        return -1
-    
     app = QApplication(args or [])
     
     mainwindow = MainWindow(app)
     mainwindow.show()
 
     result = app.exec_()
-    
-    if not save_settings():
-        log.fatal("Failed to save realm settings.")
-        return -1
     
     return result
 
