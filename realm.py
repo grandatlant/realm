@@ -7,9 +7,10 @@ Realm changing module for World of Warcraft
 __version__ = '1.1.2'
 __copyright__ = 'Copyright (C) 2025 grandatlant'
 
+import os
+import sys
 from argparse import ArgumentParser
 from functools import wraps
-from sys import exit as sys_exit
 
 from realmsettings import RealmSettings
 from clitools import confirm_action, readlines
@@ -283,4 +284,4 @@ if __name__ == '__main__':
     if __debug__: print(f'{vars(args) = }')
     result = args.func(args)
     if __debug__: print(f'{result = }')
-    sys_exit(result)
+    sys.exit(result)

@@ -25,7 +25,7 @@ from PyQt5.QtCore import (
     Qt,
 )
 from PyQt5.QtGui import (
-    QIcon, QFont,
+    QIcon, QFont, QPixmap,
 )
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow,
@@ -85,18 +85,30 @@ class MainWindow:
         self.mainwindow = window = QMainWindow(*args, **kwds)
         
         window.setWindowTitle('realm')
-        #self.setWindowIcon(QIcon('realm.jpg'))
-        window.setGeometry(100, 100, 500, 300)
+        window.setWindowIcon(QIcon('cat.jpg'))
+        window.setGeometry(100, 100, 500, 400)
         
         self.label = QLabel("Main frame for UI", window)
-        self.label.setFont(QFont('Arial', 20))
+        #self.label.setFont(QFont('Arial', 20))
         self.label.setGeometry(0, 0, 500, 50)
+        self.label.setAlignment(Qt.AlignHCenter | Qt.AlignTop)
         self.label.setStyleSheet(
             'color: red;'
             'background-color: #292929;'
+            'font-family: Tahoma;'
             'font-style: italic;'
+            'font-size: 30pt;'
         )
-        self.label.setAlignment(Qt.AlignHCenter | Qt.AlignTop)
+
+        self.pixlabel = QLabel(window)
+        self.pixlabel.setGeometry(
+            0,
+            self.label.height(),
+            window.width(),
+            window.height() - self.label.height())
+        self.pixlabel.setPixmap(QPixmap('cat.jpg'))
+        self.pixlabel.setScaledContents(True)
+        
 
     def show(self):
         """Delegate to QMainWindow.show()"""
