@@ -15,6 +15,7 @@ __all__ = [
 import os
 import sys
 import atexit
+import operator
 import tkinter as tk
 
 from realmlogging import log
@@ -169,17 +170,21 @@ class MainFrame:
     def clr_btn_cmd(self):
         log.debug('Clear Button command')
 
+@log_perf_counter
 def load_settings():
     """Manual loading procedure."""
     return _settings_instance.load()
 
 #@atexit.register
+@log_perf_counter
 def save_settings():
-    """Mock. Saving @atexit temporary disabled."""
+    """Manual saving procedure.
+    Saving @atexit temporary disabled."""
     return _settings_instance.save()
 
 ##  MAIN ENTRY POINT
-@wrap_with(load_settings, save_settings)
+@wrap_with(load_settings, save_settings,
+           return_filter_func = operator.not_)
 def main(args=None):
     root = tk.Tk()
     root.title('realm-tk')

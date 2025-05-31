@@ -15,11 +15,11 @@ __all__ = [
 import os
 import sys
 import atexit
-import time
+import operator
 
 from realmlogging import log
 from realmsettings import CoreSettings
-from wrappers import log_perf_counter, wrap_with, wrap_with_calls
+from wrappers import log_perf_counter, wrap_with
 
 from PyQt5.QtCore import (
     Qt,
@@ -148,13 +148,14 @@ def load_settings():
 #@atexit.register
 @log_perf_counter
 def save_settings():
-    """Mock. Saving @atexit temporary disabled."""
+    """Manual saving procedure.
+    Saving @atexit temporary disabled."""
     return _settings_instance.save()
 
    
 ##  MAIN ENTRY POINT
 @wrap_with(load_settings, save_settings,
-           return_filter_func = lambda status: not status)
+           return_filter_func = operator.not_)
 def main(args=None):
     app = QApplication(args or [])
     
