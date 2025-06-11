@@ -12,14 +12,19 @@ import sys
 from argparse import ArgumentParser
 from functools import wraps
 
+from realmlogging import log
 from realmsettings import RealmSettings
 from clitools import confirm_action, readlines
 
 try:
     from dotenv import load_dotenv
 except ImportError:
-    def load_dotenv():
+    log.warning('dotenv module is missing. def load_dotenv(): override')
+    def load_dotenv(*a, **kw):
         """dotenv module is missing. no-op, default environment."""
+        log.warning('dotenv module is missing. '
+                    'Environment unchanged '
+                    'with load_dotenv call.')
         return None#False##TODO: Think about it
 
 # Environment update first
@@ -43,9 +48,9 @@ def check_settings(check_func):
         @wraps(func)
         def wrapper(args, *func_args, **func_kwargs):
             if not check_func(args.settings):
-                verbose_print('Settings check for file "' + 
-                              args.settings + '" failed.', 
-                              args.verbosity)
+                warning = 'Settings check for file "%s" failed.' % args.settings
+                log.warning(warning)
+                verbose_print(warning, args.verbosity)
                 return 1
             return func(args, *func_args, **func_kwargs)
         return wrapper
@@ -55,6 +60,7 @@ def check_settings(check_func):
 
 def _default(args):
     """No command specified. return soft error status."""
+    log.debug('No command specified. _default() call.')
     return 1
 
 @check_settings(os.path.exists)
