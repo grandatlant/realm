@@ -1,2 +1,2 @@
-#!/bin/sh
-python3 -O realm.py $@
+#!/bin/bash
+python3 -O realm.py "$@"
