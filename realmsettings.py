@@ -4,7 +4,7 @@
 Classes and functions for RealmSettings
 """
 
-__version__ = '1.1.1'
+__version__ = '1.1.2'
 
 __all__ = ['EntryField',
            'DefaultFactory',
@@ -23,23 +23,29 @@ from dataclasses import dataclass, field
 from abc import ABC, abstractmethod
 from contextlib import AbstractContextManager
 
+
 class EntryField(str, Enum):
     NAME = 'name'
     HIDDEN = 'hidden'
     STRINGS = 'strings'
 
+
 class DefaultFactory:
     """Factory methods for module use"""
     __slots__ = ()
+    
     @staticmethod
     def filename():
         return path_join('.', 'DefaultSettings.json')
+    
     @staticmethod
     def realmlist():
         return path_join('..', 'Data', 'enUS', 'realmlist.wtf')
+    
     @staticmethod
     def realms():
         return dict()
+    
     @staticmethod
     def realm_entry(name, strings = None, /, *,
                     hidden = False, **kwds):
@@ -51,20 +57,28 @@ class DefaultFactory:
         entry.update(kwds) ## for future usage if I need it
         return entry
 
+
 @dataclass()
 class SettingsData:
     """Dataclass for Settings fields"""
-    _filename: str = field(default_factory=DefaultFactory.filename)
-    _realmlist: str = field(init=False,
-                            #repr=False,
-                            compare=False,
-                            default_factory=DefaultFactory.realmlist)
-    _realms: dict = field(init=False,
-                          #repr=False,
-                          compare=False,
-                          default_factory=DefaultFactory.realms)
+    _filename: str = field(
+        default_factory=DefaultFactory.filename,
+    )
+    _realmlist: str = field(
+        init=False,
+        #repr=False,
+        compare=False,
+        default_factory=DefaultFactory.realmlist,
+    )
+    _realms: dict = field(
+        init=False,
+        #repr=False,
+        compare=False,
+        default_factory=DefaultFactory.realms,
+    )
     def __post_init__(self):
         pass
+
 
 class ItemAccessBase(ABC):
     """Item access interface"""
@@ -89,6 +103,7 @@ class ItemAccessBase(ABC):
     def popitem(self, /): raise KeyError(f'{self.__class__} have no items')
     @abstractmethod
     def clear(self, /): return None
+
 
 class BaseSettings(ItemAccessBase):
     """BaseSettings ABC interface"""
@@ -132,6 +147,7 @@ class BaseSettings(ItemAccessBase):
     def save(self, /):
         """Save current settings to file"""
 
+
 class CoreSettings(SettingsData, BaseSettings):
     """File-supported RealmSettings"""
     @property
@@ -174,9 +190,11 @@ class CoreSettings(SettingsData, BaseSettings):
         entry = super().add(name, strings)
         self.realms[name] = entry
         return entry
+    
     def remove(self, name):
         """Remove realm 'name' for good
         Return value is removed entry link or False if failed"""
+        # Placeholder
         return super().remove(name)
     
     def show(self, name):
@@ -185,6 +203,7 @@ class CoreSettings(SettingsData, BaseSettings):
             self.realms[name][EntryField.HIDDEN] = False
             return True
         return False
+    
     def hide(self, name):
         """Mark realm 'name' as hidden"""
         if self.have_realm(name):
@@ -217,6 +236,7 @@ class CoreSettings(SettingsData, BaseSettings):
         finally:
             sets = None
             ex = None
+    
     def save(self):
         """Save current settings to JSON file"""
         try:
@@ -224,7 +244,7 @@ class CoreSettings(SettingsData, BaseSettings):
                 sets = dict()
                 sets['realmlist'] = self.realmlist
                 sets['realms'] = self.realms
-                json_dump(sets, f)
+                json_dump(sets, f, indent=4)
         except OSError as ex:
             print(f"Can't save {self._filename}: {ex}", file = errfile)
             return False
@@ -233,6 +253,7 @@ class CoreSettings(SettingsData, BaseSettings):
         finally:
             sets = None
             ex = None
+
 
 class SettingsContextManager(AbstractContextManager):
     """Context manager for settings"""
@@ -246,6 +267,7 @@ class SettingsContextManager(AbstractContextManager):
         if not any((exc_type, exc_value, traceback)):
             self.save()
         return None
+
 
 class RealmSettings(CoreSettings, SettingsContextManager):
     """Settings with advanced features besides Core:
