@@ -14,34 +14,31 @@ __all__ = [
     'configure_logger',
 ]
 
-import os
 import logging
 
 try:
-    from dotenv import load_dotenv
+    from dotenv import dotenv_values
 except ImportError:
-    def load_dotenv():
+    def dotenv_values(*a, **kw):
         """dotenv module is missing. no-op, default environment."""
-        return None#False##TODO: Think about it
+        return dict()
 
-# Environment update first
-load_dotenv()
 
 def configure_logger(level=logging.ERROR, **kwds):
     '''Configure logging basicConfig and return logger to use in module'''
-    # Settings for default environment
+    env = dotenv_values()
     log_config = {
-        'force': True,
+        #'force': True,
         'level': level,
-        'style': os.getenv('LOG_STYLE', '{'),
-        'format': os.getenv('LOG_FORMAT', '{levelname}: {message}'),
+        'style': env.get('LOG_STYLE', '{'),
+        'format': env.get('LOG_FORMAT', '{levelname}: {message}'),
         #format="%(asctime)s:%(levelname)s:%(name)s:%(funcName)s:%(message)s",
         }
 
-    log_file_name = os.getenv('LOG_FILE_NAME', None)
+    log_file_name = env.get('LOG_FILE_NAME', None)
     if log_file_name:
         log_config['filename'] = log_file_name
-        log_config['filemode'] = os.getenv('LOG_FILE_MODE', 'a')
+        log_config['filemode'] = env.get('LOG_FILE_MODE', 'a')
 
     # Read all possible other kwargs to update config.
     # force, handlers, or all others filled here can be overriden
@@ -51,5 +48,6 @@ def configure_logger(level=logging.ERROR, **kwds):
     
     return logging.getLogger(__name__)
 
-log_lvl = logging.DEBUG if __debug__ else logging.WARNING
+
+log_lvl = logging.DEBUG if __debug__ else logging.ERROR
 log = configure_logger(log_lvl)

@@ -1,1 +1,2 @@
 python-dotenv >= 1.0.1
+PyQt5 >= 5.14.1              
