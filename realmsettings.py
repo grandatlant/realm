@@ -4,7 +4,7 @@
 Classes and functions for RealmSettings
 """
 
-__version__ = '1.2.0'
+__version__ = '1.2.1'
 
 __all__ = [
     'EntryField',
@@ -17,10 +17,10 @@ __all__ = [
     'RealmSettings',
 ]
 
-from sys import stderr as errfile, exit as sys_exit
+import sys
 from os.path import abspath, join as path_join, exists as path_exists
 
-from json import load as json_load, dump as json_dump
+import json
 from enum import Enum
 from dataclasses import dataclass, field
 from abc import abstractmethod
@@ -98,26 +98,16 @@ class SettingsData(ItemAccessBase):
     __filename: str = field(
         default_factory=DefaultFactory.filename,
     )
-    __realmlist: str = field(
-        init=False,
-        #repr=False,
-        compare=False,
-        default_factory=DefaultFactory.realmlist,
-    )
-    __realms: dict = field(
-        init=False,
-        #repr=False,
-        compare=False,
-        default_factory=DefaultFactory.realms,
-    )
-    
-    def __post_init__(self):
-        pass
-    
     @property
     def filename(self):
         return self.__filename
     
+    __realmlist: str = field(
+        init=False,
+        repr=False,
+        compare=False,
+        default_factory=DefaultFactory.realmlist,
+    )
     @property
     def realmlist(self):
         return self.__realmlist
@@ -126,9 +116,18 @@ class SettingsData(ItemAccessBase):
         ## TODO: Validate ?
         self.__realmlist = value
 
+    __realms: dict = field(
+        init=False,
+        repr=False,
+        compare=False,
+        default_factory=DefaultFactory.realms,
+    )
     @property
     def realms(self):
         return self.__realms
+    
+    def __post_init__(self):
+        pass
     
     def __contains__(self, key, /):
         return self.realms.__contains__(key)
@@ -195,6 +194,7 @@ class BaseSettings(ItemAccessBase):
     @abstractmethod
     def use(self, name, /):
         """Push realm's 'strings' to 'realmlist.wtf' file"""
+        return None
 
 
 @runtime_checkable
@@ -212,48 +212,60 @@ class Saveable(Protocol):
 
 class CoreSettings(SettingsData, BaseSettings, Saveable):
     """File-supported RealmSettings"""
+
+    # Default dependencies
+    errfile = sys.stderr # IO object for printing OSErrors
+    loader = json # Object to call load(f) method for loading dict() from f
+    dumper = json # Object to call dump(sets, f) method for saving dict() to f
+    
     def use(self, name):
         """Push realm`s 'strings' to 'realmlist.wtf' file"""
         if self.have_realm(name) and path_exists(self.realmlist):
-            with open(self.realmlist, 'wt') as rlfile:
-                for line in self.realm_strings(name):
-                    rlfile.write(f'{line}\r\n')
-            return True
+            try:
+                with open(self.realmlist, 'wt') as rlfile:
+                    for line in self.realm_strings(name):
+                        rlfile.write(f'{line}\r\n')
+            except OSError as ex:
+                print(f"Can't use realm '{self.name}' "
+                      "for realmlist file '{self.realmlist}': "
+                      "{ex}", file = self.errfile)
+                return False
+            else:
+                return True
         return False
     
     def load(self):
         """Load settings from JSON file"""
         try:
             with open(self.filename, 'rt') as f:
-                sets = dict(json_load(f))
-                self.realmlist = sets.get('realmlist', self.realmlist)
-                self.realms.clear()
-                self.realms.update(sets.get('realms', DefaultFactory.realms()))
+                sets = dict(self.loader.load(f))
         except OSError as ex:
-            print(f"Can't load {self._filename}: {ex}", file = errfile)
+            print(f"Can't load '{self.filename}': {ex}",
+                  file = self.errfile)
             return False
         else:
+            self.realmlist = sets.get('realmlist', self.realmlist)
+            #self.realms.clear()
+            self.realms.update(sets.get('realms', DefaultFactory.realms()))
             return True
-        finally:
-            sets = None
-            ex = None
+        return False
     
     def save(self):
         """Save current settings to JSON file"""
+        sets = {
+            'realmlist': self.realmlist,
+            'realms':    self.realms,
+        }
         try:
             with open(self.filename, 'wt') as f:
-                sets = dict()
-                sets['realmlist'] = self.realmlist
-                sets['realms'] = self.realms
-                json_dump(sets, f, indent=4)
+                self.dumper.dump(sets, f, indent=4)
         except OSError as ex:
-            print(f"Can't save {self._filename}: {ex}", file = errfile)
+            print(f"Can't save '{self.filename}': {ex}",
+                  file = self.errfile)
             return False
         else:
             return True
-        finally:
-            sets = None
-            ex = None
+        return False
 
 
 class SettingsContextManager(AbstractContextManager, Saveable):
@@ -321,4 +333,4 @@ def main() -> int:
     return 0
 
 if __name__ == '__main__':
-    sys_exit(main())
+    main()
