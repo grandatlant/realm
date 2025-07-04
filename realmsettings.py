@@ -24,9 +24,15 @@ import json
 from enum import Enum
 from dataclasses import dataclass, field
 from abc import abstractmethod
-from typing import Protocol, runtime_checkable
 from contextlib import AbstractContextManager
 
+from typing import (
+    IO,
+    TextIO,
+    Protocol,
+    runtime_checkable,
+    Optional,
+)
 
 class EntryField(str, Enum):
     NAME = 'name'
@@ -203,20 +209,115 @@ class Saveable(Protocol):
     __slots__ = ()
     
     @abstractmethod
-    def load(self, /):
+    def load(self, /, *args, **kwargs) -> bool:
         """Load settings. Return True if success."""
     @abstractmethod
-    def save(self, /):
+    def save(self, /, *args, **kwargs) -> bool:
         """Save settings. Return True if success."""
+
+
+@runtime_checkable
+class Loader(Protocol):
+    """Used to load objects from file."""
+    @abstractmethod
+    def load(self, /, file: IO, *args, **kwargs) -> object:
+        """Used to load object from file.
+        Return value - Loaded Object"""
+        return object()
+
+
+class DefaultLoader(Loader):
+    """Descriptor to specify Loader object"""
+    def __init__(
+        self,
+        loader_object: Loader,
+        *args, **kwargs
+    ) -> None:
+        self.object = loader_object
+        self.args   = args
+        self.kwargs = kwargs
+
+    def __get__(self, obj, t=None):
+        return self
+
+    def __set__(self, obj, value):
+        if (isinstance(value, Loader)
+            or hasattr(value, 'load') and callable(value.load)
+        ):
+            self.object = value
+            self.args   = tuple()
+            self.kwargs = dict()
+        else:
+            raise ValueError('Loader must have callable "load" method!')
+
+    def load(self, /,
+             file: IO,
+             *args, **kwargs) -> object:
+        return self.object.load(
+            file,
+            *self.args,
+            *args,
+            **self.kwargs,
+            **kwargs,
+        )
+
+
+@runtime_checkable
+class Dumper(Protocol):
+    """Used to dump objects to file."""
+    @abstractmethod
+    def dump(self, /, obj: object, file: IO, *args, **kwargs) -> None:
+        """Used to dump object to file."""
+
+
+class DefaultDumper(Dumper):
+    """Descriptor to specify Dumper object"""
+    def __init__(
+        self,
+        dumper_object: Dumper,
+        *args, **kwargs
+    ) -> None:
+        self.object = dumper_object
+        self.args   = args
+        self.kwargs = kwargs
+
+    def __get__(self, obj, t=None):
+        return self
+
+    def __set__(self, obj, value):
+        if (isinstance(value, Dumper)
+            or hasattr(value, 'dump') and callable(value.dump)
+        ):
+            self.object = value
+            self.args   = tuple()
+            self.kwargs = dict()
+        else:
+            raise ValueError('Dumper must have callable "dump" method!')
+
+    def dump(self, /,
+             obj: object,
+             file: IO,
+             *args, **kwargs) -> None:
+        self.object.dump(
+            obj,
+            file,
+            *self.args,
+            *args,
+            **self.kwargs,
+            **kwargs,
+        )
 
 
 class CoreSettings(SettingsData, BaseSettings, Saveable):
     """File-supported RealmSettings"""
-
+    
     # Default dependencies
-    errfile = sys.stderr # IO object for printing OSErrors
-    loader = json # Object to call load(f) method for loading dict() from f
-    dumper = json # Object to call dump(sets, f) method for saving dict() to f
+    # IO object for printing OSErrors
+    errfile: TextIO = sys.stderr
+    # Object to call load(f) method for loading dict() from f
+    loader: Loader = DefaultLoader(json)
+    # Object to call dump(sets, f) method for saving dict() to f
+    dumper: Dumper = DefaultDumper(json, indent=4)
     
     def use(self, name):
         """Push realm`s 'strings' to 'realmlist.wtf' file"""
@@ -234,11 +335,15 @@ class CoreSettings(SettingsData, BaseSettings, Saveable):
                 return True
         return False
     
-    def load(self):
-        """Load settings from JSON file"""
+    def load(self, /,
+             loader: Optional[Loader] = None,
+             *args, **kwargs) -> bool:
+        """Load settings from JSON file.
+        Return value - True if succeed, False othervise"""
+        loader = loader or self.loader
         try:
-            with open(self.filename, 'rt') as f:
-                sets = dict(self.loader.load(f))
+            with open(self.filename, 'r') as f:
+                sets = dict(loader.load(f, *args, **kwargs))
         except OSError as ex:
             print(f"Can't load '{self.filename}': {ex}",
                   file = self.errfile)
@@ -250,15 +355,19 @@ class CoreSettings(SettingsData, BaseSettings, Saveable):
             return True
         return False
     
-    def save(self):
-        """Save current settings to JSON file"""
+    def save(self, /,
+             dumper: Optional[Dumper] = None,
+             *args, **kwargs) -> bool:
+        """Save current settings to JSON file.
+        Return value - True if succeed, False othervise"""
+        dumper = dumper or self.dumper
         sets = {
             'realmlist': self.realmlist,
             'realms':    self.realms,
         }
         try:
-            with open(self.filename, 'wt') as f:
-                self.dumper.dump(sets, f, indent=4)
+            with open(self.filename, 'w') as f:
+                dumper.dump(sets, f, *args, **kwargs)
         except OSError as ex:
             print(f"Can't save '{self.filename}': {ex}",
                   file = self.errfile)
