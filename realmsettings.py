@@ -4,7 +4,7 @@
 Classes and functions for RealmSettings
 """
 
-__version__ = '1.2.1'
+__version__ = '1.2.3'
 
 __all__ = [
     'EntryField',
@@ -13,6 +13,8 @@ __all__ = [
     'BaseSettings',
     'CoreSettings',
     'Saveable',
+    'Loader',
+    'Dumper',
     'SettingsContextManager',
     'RealmSettings',
 ]
@@ -23,7 +25,7 @@ from os.path import abspath, join as path_join, exists as path_exists
 import json
 from enum import Enum
 from dataclasses import dataclass, field
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from contextlib import AbstractContextManager
 
 from typing import (
@@ -31,6 +33,7 @@ from typing import (
     TextIO,
     Protocol,
     runtime_checkable,
+    Union,
     Optional,
 )
 
@@ -206,8 +209,6 @@ class BaseSettings(ItemAccessBase):
 @runtime_checkable
 class Saveable(Protocol):
     """save-load interface"""
-    __slots__ = ()
-    
     @abstractmethod
     def load(self, /, *args, **kwargs) -> bool:
         """Load settings. Return True if success."""
@@ -226,25 +227,41 @@ class Loader(Protocol):
         return object()
 
 
-class DefaultLoader(Loader):
-    """Descriptor to specify Loader object"""
+@runtime_checkable
+class Dumper(Protocol):
+    """Used to dump objects to file."""
+    @abstractmethod
+    def dump(self, /, obj: object, file: IO, *args, **kwargs) -> None:
+        """Used to dump object to file."""
+
+
+class _ProxyDescriptorBase(ABC):
+    """Descriptor ABC to specify Loader and Dumper proxy-objects."""
+    __slots__ = ('object', 'args', 'kwargs')
     def __init__(
         self,
-        loader_object: Loader,
+        obj: Union[Loader, Dumper],
         *args, **kwargs
     ) -> None:
-        self.object = loader_object
-        self.args   = args
-        self.kwargs = kwargs
+        self.object: Union[Loader, Dumper] = obj
+        self.args: tuple = args
+        self.kwargs: dict = kwargs
 
-    def __get__(self, obj, t=None):
-        return self
+    def __get__(self, obj, owner=None): return self
+
+    @abstractmethod
+    def __set__(self, obj, value): raise ValueError
+
+
+class DefaultLoader(_ProxyDescriptorBase, Loader):
+    """Descriptor to specify Loader object"""
 
     def __set__(self, obj, value):
         if (isinstance(value, Loader)
             or hasattr(value, 'load') and callable(value.load)
         ):
             self.object = value
+            # Drop initialized args because changed object
             self.args   = tuple()
             self.kwargs = dict()
         else:
@@ -262,27 +279,8 @@ class DefaultLoader(Loader):
         )
 
 
-@runtime_checkable
-class Dumper(Protocol):
-    """Used to dump objects to file."""
-    @abstractmethod
-    def dump(self, /, obj: object, file: IO, *args, **kwargs) -> None:
-        """Used to dump object to file."""
-
-
-class DefaultDumper(Dumper):
+class DefaultDumper(_ProxyDescriptorBase, Dumper):
     """Descriptor to specify Dumper object"""
-    def __init__(
-        self,
-        dumper_object: Dumper,
-        *args, **kwargs
-    ) -> None:
-        self.object = dumper_object
-        self.args   = args
-        self.kwargs = kwargs
-
-    def __get__(self, obj, t=None):
-        return self
 
     def __set__(self, obj, value):
         if (isinstance(value, Dumper)
