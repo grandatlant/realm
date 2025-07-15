@@ -251,15 +251,20 @@ class _ProxyDescriptorBase(ABC):
     def __set_name__(self, owner, name):
         self.owner, self.name = owner, name
 
+    @property
+    def attrname(self):
+        """Private attribute name for instance."""
+        return '_' + self.name
+
     def __get__(self, obj, owner=None):
         if obj is None:
             return self
         # obj._name or self
-        return getattr(obj, '_%s' % self.name, self)
+        return getattr(obj, self.attrname, self)
     
     @abstractmethod
     def __set__(self, obj, value):
-        setattr(obj, '_%s' % self.name, value)
+        setattr(obj, self.attrname, value)
 
 
 class DefaultLoader(_ProxyDescriptorBase, Loader):
