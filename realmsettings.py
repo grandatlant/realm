@@ -237,7 +237,8 @@ class Dumper(Protocol):
 
 class _ProxyDescriptorBase(ABC):
     """Descriptor ABC to specify Loader and Dumper proxy-objects."""
-    __slots__ = ('object', 'args', 'kwargs')
+    __slots__ = ('owner', 'name', 'object', 'args', 'kwargs')
+    
     def __init__(
         self,
         obj: Union[Loader, Dumper],
@@ -247,10 +248,18 @@ class _ProxyDescriptorBase(ABC):
         self.args: tuple = args
         self.kwargs: dict = kwargs
 
-    def __get__(self, obj, owner=None): return self
+    def __set_name__(self, owner, name):
+        self.owner, self.name = owner, name
 
+    def __get__(self, obj, owner=None):
+        if obj is None:
+            return self
+        # obj._name or self
+        return getattr(obj, '_%s' % self.name, self)
+    
     @abstractmethod
-    def __set__(self, obj, value): raise ValueError
+    def __set__(self, obj, value):
+        setattr(obj, '_%s' % self.name, value)
 
 
 class DefaultLoader(_ProxyDescriptorBase, Loader):
@@ -260,10 +269,7 @@ class DefaultLoader(_ProxyDescriptorBase, Loader):
         if (isinstance(value, Loader)
             or hasattr(value, 'load') and callable(value.load)
         ):
-            self.object = value
-            # Drop initialized args because changed object
-            self.args   = tuple()
-            self.kwargs = dict()
+            super().__set__(obj, value)
         else:
             raise ValueError('Loader must have callable "load" method!')
 
@@ -286,9 +292,7 @@ class DefaultDumper(_ProxyDescriptorBase, Dumper):
         if (isinstance(value, Dumper)
             or hasattr(value, 'dump') and callable(value.dump)
         ):
-            self.object = value
-            self.args   = tuple()
-            self.kwargs = dict()
+            super().__set__(obj, value)
         else:
             raise ValueError('Dumper must have callable "dump" method!')
 
@@ -336,7 +340,7 @@ class CoreSettings(SettingsData, BaseSettings, Saveable):
     def load(self, /,
              loader: Optional[Loader] = None,
              *args, **kwargs) -> bool:
-        """Load settings from JSON file.
+        """Load settings from file.
         Return value - True if succeed, False othervise"""
         loader = loader or self.loader
         try:
@@ -345,7 +349,6 @@ class CoreSettings(SettingsData, BaseSettings, Saveable):
         except OSError as ex:
             print(f"Can't load '{self.filename}': {ex}",
                   file = self.errfile)
-            return False
         else:
             self.realmlist = sets.get('realmlist', self.realmlist)
             #self.realms.clear()
@@ -356,7 +359,7 @@ class CoreSettings(SettingsData, BaseSettings, Saveable):
     def save(self, /,
              dumper: Optional[Dumper] = None,
              *args, **kwargs) -> bool:
-        """Save current settings to JSON file.
+        """Save current settings to file.
         Return value - True if succeed, False othervise"""
         dumper = dumper or self.dumper
         sets = {
@@ -369,7 +372,6 @@ class CoreSettings(SettingsData, BaseSettings, Saveable):
         except OSError as ex:
             print(f"Can't save '{self.filename}': {ex}",
                   file = self.errfile)
-            return False
         else:
             return True
         return False
