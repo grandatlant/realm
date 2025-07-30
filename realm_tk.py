@@ -14,13 +14,13 @@ __all__ = [
 
 import os
 import sys
-import atexit
+#import atexit
 import operator
 import tkinter as tk
 
 from realmlogging import log
 from realmsettings import CoreSettings
-from wrappers import log_perf_counter, wrap_with
+from tools.wrappers import log_perf_counter, wrap_with
 
 try:
     from dotenv import load_dotenv

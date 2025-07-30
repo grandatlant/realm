@@ -14,12 +14,12 @@ __all__ = [
 
 import os
 import sys
-import atexit
+#import atexit
 import operator
 
 from realmlogging import log
 from realmsettings import CoreSettings
-from wrappers import log_perf_counter, wrap_with
+from tools.wrappers import log_perf_counter, wrap_with
 
 from PyQt5.QtCore import (
     Qt,
