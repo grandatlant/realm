@@ -4,7 +4,7 @@
 Classes and functions for RealmSettings
 """
 
-__version__ = '1.2.0'
+__version__ = '1.2.3'
 
 __all__ = [
     'EntryField',
@@ -13,20 +13,29 @@ __all__ = [
     'BaseSettings',
     'CoreSettings',
     'Saveable',
+    'Loader',
+    'Dumper',
     'SettingsContextManager',
     'RealmSettings',
 ]
 
-from sys import stderr as errfile, exit as sys_exit
+import sys
 from os.path import abspath, join as path_join, exists as path_exists
 
-from json import load as json_load, dump as json_dump
+import json
 from enum import Enum
 from dataclasses import dataclass, field
-from abc import abstractmethod
-from typing import Protocol, runtime_checkable
+from abc import ABC, abstractmethod
 from contextlib import AbstractContextManager
 
+from typing import (
+    IO,
+    TextIO,
+    Protocol,
+    runtime_checkable,
+    Union,
+    Optional,
+)
 
 class EntryField(str, Enum):
     NAME = 'name'
@@ -98,26 +107,16 @@ class SettingsData(ItemAccessBase):
     __filename: str = field(
         default_factory=DefaultFactory.filename,
     )
-    __realmlist: str = field(
-        init=False,
-        #repr=False,
-        compare=False,
-        default_factory=DefaultFactory.realmlist,
-    )
-    __realms: dict = field(
-        init=False,
-        #repr=False,
-        compare=False,
-        default_factory=DefaultFactory.realms,
-    )
-    
-    def __post_init__(self):
-        pass
-    
     @property
     def filename(self):
         return self.__filename
     
+    __realmlist: str = field(
+        init=False,
+        repr=False,
+        compare=False,
+        default_factory=DefaultFactory.realmlist,
+    )
     @property
     def realmlist(self):
         return self.__realmlist
@@ -126,9 +125,18 @@ class SettingsData(ItemAccessBase):
         ## TODO: Validate ?
         self.__realmlist = value
 
+    __realms: dict = field(
+        init=False,
+        repr=False,
+        compare=False,
+        default_factory=DefaultFactory.realms,
+    )
     @property
     def realms(self):
         return self.__realms
+    
+    def __post_init__(self):
+        pass
     
     def __contains__(self, key, /):
         return self.realms.__contains__(key)
@@ -195,65 +203,183 @@ class BaseSettings(ItemAccessBase):
     @abstractmethod
     def use(self, name, /):
         """Push realm's 'strings' to 'realmlist.wtf' file"""
+        return None
 
 
 @runtime_checkable
 class Saveable(Protocol):
     """save-load interface"""
-    __slots__ = ()
-    
     @abstractmethod
-    def load(self, /):
+    def load(self, /, *args, **kwargs) -> bool:
         """Load settings. Return True if success."""
     @abstractmethod
-    def save(self, /):
+    def save(self, /, *args, **kwargs) -> bool:
         """Save settings. Return True if success."""
+
+
+@runtime_checkable
+class Loader(Protocol):
+    """Used to load objects from file."""
+    @abstractmethod
+    def load(self, /, file: IO, *args, **kwargs) -> object:
+        """Used to load object from file.
+        Return value - Loaded Object"""
+        return object()
+
+
+@runtime_checkable
+class Dumper(Protocol):
+    """Used to dump objects to file."""
+    @abstractmethod
+    def dump(self, /, obj: object, file: IO, *args, **kwargs) -> None:
+        """Used to dump object to file."""
+
+
+class _ProxyDescriptorBase(ABC):
+    """Descriptor ABC to specify Loader and Dumper proxy-objects."""
+    __slots__ = ('owner', 'name', 'object', 'args', 'kwargs')
+    
+    def __init__(
+        self,
+        obj: Union[Loader, Dumper],
+        *args, **kwargs
+    ) -> None:
+        self.object: Union[Loader, Dumper] = obj
+        self.args: tuple = args
+        self.kwargs: dict = kwargs
+
+    def __set_name__(self, owner, name):
+        self.owner, self.name = owner, name
+
+    @property
+    def attrname(self):
+        """Private attribute name for instance."""
+        return '_' + self.name
+
+    def __get__(self, obj, owner=None):
+        if obj is None:
+            return self
+        # obj._name or self
+        return getattr(obj, self.attrname, self)
+    
+    @abstractmethod
+    def __set__(self, obj, value):
+        setattr(obj, self.attrname, value)
+
+
+class DefaultLoader(_ProxyDescriptorBase, Loader):
+    """Descriptor to specify Loader object"""
+
+    def __set__(self, obj, value):
+        if (isinstance(value, Loader)
+            or hasattr(value, 'load') and callable(value.load)
+        ):
+            super().__set__(obj, value)
+        else:
+            raise ValueError('Loader must have callable "load" method!')
+
+    def load(self, /,
+             file: IO,
+             *args, **kwargs) -> object:
+        return self.object.load(
+            file,
+            *self.args,
+            *args,
+            **self.kwargs,
+            **kwargs,
+        )
+
+
+class DefaultDumper(_ProxyDescriptorBase, Dumper):
+    """Descriptor to specify Dumper object"""
+
+    def __set__(self, obj, value):
+        if (isinstance(value, Dumper)
+            or hasattr(value, 'dump') and callable(value.dump)
+        ):
+            super().__set__(obj, value)
+        else:
+            raise ValueError('Dumper must have callable "dump" method!')
+
+    def dump(self, /,
+             obj: object,
+             file: IO,
+             *args, **kwargs) -> None:
+        self.object.dump(
+            obj,
+            file,
+            *self.args,
+            *args,
+            **self.kwargs,
+            **kwargs,
+        )
 
 
 class CoreSettings(SettingsData, BaseSettings, Saveable):
     """File-supported RealmSettings"""
+    
+    # Default dependencies
+    # IO object for printing OSErrors
+    errfile: TextIO = sys.stderr
+    # Object to call load(f) method for loading dict() from f
+    loader: Loader = DefaultLoader(json)
+    # Object to call dump(sets, f) method for saving dict() to f
+    dumper: Dumper = DefaultDumper(json, indent=4)
+    
     def use(self, name):
         """Push realm`s 'strings' to 'realmlist.wtf' file"""
         if self.have_realm(name) and path_exists(self.realmlist):
-            with open(self.realmlist, 'wt') as rlfile:
-                for line in self.realm_strings(name):
-                    rlfile.write(f'{line}\r\n')
+            try:
+                with open(self.realmlist, 'wt') as rlfile:
+                    for line in self.realm_strings(name):
+                        rlfile.write(f'{line}\r\n')
+            except OSError as ex:
+                print(f"Can't use realm '{self.name}' "
+                      "for realmlist file '{self.realmlist}': "
+                      "{ex}", file = self.errfile)
+                return False
+            else:
+                return True
+        return False
+    
+    def load(self, /,
+             loader: Optional[Loader] = None,
+             *args, **kwargs) -> bool:
+        """Load settings from file.
+        Return value - True if succeed, False othervise"""
+        loader = loader or self.loader
+        try:
+            with open(self.filename, 'r') as f:
+                sets = dict(loader.load(f, *args, **kwargs))
+        except OSError as ex:
+            print(f"Can't load '{self.filename}': {ex}",
+                  file = self.errfile)
+        else:
+            self.realmlist = sets.get('realmlist', self.realmlist)
+            #self.realms.clear()
+            self.realms.update(sets.get('realms', DefaultFactory.realms()))
             return True
         return False
     
-    def load(self):
-        """Load settings from JSON file"""
+    def save(self, /,
+             dumper: Optional[Dumper] = None,
+             *args, **kwargs) -> bool:
+        """Save current settings to file.
+        Return value - True if succeed, False othervise"""
+        dumper = dumper or self.dumper
+        sets = {
+            'realmlist': self.realmlist,
+            'realms':    self.realms,
+        }
         try:
-            with open(self.filename, 'rt') as f:
-                sets = dict(json_load(f))
-                self.realmlist = sets.get('realmlist', self.realmlist)
-                self.realms.clear()
-                self.realms.update(sets.get('realms', DefaultFactory.realms()))
+            with open(self.filename, 'w') as f:
+                dumper.dump(sets, f, *args, **kwargs)
         except OSError as ex:
-            print(f"Can't load {self._filename}: {ex}", file = errfile)
-            return False
+            print(f"Can't save '{self.filename}': {ex}",
+                  file = self.errfile)
         else:
             return True
-        finally:
-            sets = None
-            ex = None
-    
-    def save(self):
-        """Save current settings to JSON file"""
-        try:
-            with open(self.filename, 'wt') as f:
-                sets = dict()
-                sets['realmlist'] = self.realmlist
-                sets['realms'] = self.realms
-                json_dump(sets, f, indent=4)
-        except OSError as ex:
-            print(f"Can't save {self._filename}: {ex}", file = errfile)
-            return False
-        else:
-            return True
-        finally:
-            sets = None
-            ex = None
+        return False
 
 
 class SettingsContextManager(AbstractContextManager, Saveable):
@@ -321,4 +447,4 @@ def main() -> int:
     return 0
 
 if __name__ == '__main__':
-    sys_exit(main())
+    main()

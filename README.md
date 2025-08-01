@@ -10,9 +10,13 @@
 - ./realm.py list --hidden | ./realm.py show
 
 ## New in 1.1.2b
-#### realm-tk.py - minimalistic tkinter GUI app
-- chmod +x ./realm-tk.py && ./realm-tk.py
+#### realm_tk.py - minimalistic tkinter GUI app
+- chmod +x ./realm_tk.py && ./realm_tk.py
 
 - "Use" function available for chosen realm to play
 - "Remove" function available for realm hiding from list
 - "Add" and "Clear" functions are 'NotImplemented' yet
+
+#### Starting from 1.2.3 - git clone --recurse-submodules required for 'tools' submodule
+
+
