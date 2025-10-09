@@ -1,0 +1,14 @@
+[project]
+name = "realm"
+version = "1.2.0"
+description = "Realmlist changing util for World of Warcraft"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "python-dotenv>=1.1.1",
+]
+
+[project.optional-dependencies]
+qt = [
+    "pyqt5>=5.15.11",
+]

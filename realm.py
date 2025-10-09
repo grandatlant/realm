@@ -20,28 +20,32 @@ try:
     from dotenv import load_dotenv
 except ImportError:
     log.warning('dotenv module is missing. def load_dotenv(): override')
+
     def load_dotenv(*a, **kw):
         """dotenv module is missing. no-op, default environment."""
-        log.warning('dotenv module is missing. '
-                    'Environment unchanged '
-                    'with load_dotenv call.')
-        return None#False##TODO: Think about it
+        log.warning(
+            'dotenv module is missing. '
+            'Environment unchanged '
+            'with load_dotenv call.'
+        )
+        return None  # False##TODO: Think about it
+
 
 # Environment update first
 load_dotenv()
 
 DEF_SETTINGS_FILENAME = os.getenv(
-    'DEF_SETTINGS_FILENAME',
-    os.path.join('.','realm.json')
+    'DEF_SETTINGS_FILENAME', os.path.join('.', 'realm.json')
 )
 
 
 ## Helper fucntions
 
 
-def verbose_print(msg, /, verbosity = 1, min_level = 1):
+def verbose_print(msg, /, verbosity=1, min_level=1):
     if verbosity >= min_level:
         print(msg)
+
 
 def info_print(msg, verbosity):
     verbose_print(msg, verbosity, 2)
@@ -52,12 +56,16 @@ def check_settings(check_func):
         @wraps(func)
         def wrapper(args, *func_args, **func_kwargs):
             if not check_func(args.settings):
-                warning = 'Settings check for file "%s" failed.' % args.settings
+                warning = (
+                    'Settings check for file "%s" failed.' % args.settings
+                )
                 log.warning(warning)
                 verbose_print(warning, args.verbosity)
                 return 1
             return func(args, *func_args, **func_kwargs)
+
         return wrapper
+
     return decorator
 
 
@@ -71,7 +79,7 @@ def _default(args):
 
 
 @check_settings(os.path.exists)
-def _list(args):    
+def _list(args):
     with RealmSettings(args.settings) as sets:
         for name in sets:
             # condition to pass current realm
@@ -81,19 +89,19 @@ def _list(args):
             else:
                 if args.hidden:
                     continue
-            hidden_indicator = ('(hidden)'
-                                if args.all and sets.realm_hidden(name)
-                                else '')
+            hidden_indicator = (
+                '(hidden)' if args.all and sets.realm_hidden(name) else ''
+            )
             name_to_print = f'{hidden_indicator}{name}'
             print(name_to_print)
             if args.long:
-                prefix = (f'{name_to_print} -> ' if args.verbosity else '')
+                prefix = f'{name_to_print} -> ' if args.verbosity else ''
                 for string in sets.realm_strings(name):
                     print(f'{prefix}{string}')
     return 0
 
 
-#@check_settings(os.path.exists)
+# @check_settings(os.path.exists)
 def _add(args):
     with RealmSettings(args.settings) as sets:
         name = args.name
@@ -103,15 +111,18 @@ def _add(args):
                 return 1
         strings = args.strings
         if not strings:
-            verbose_print('Enter strings for realmlist.wtf. '
-                          'EOF (ctrl+d) to finish', args.verbosity)
-            strings = [got_string.strip()
-                       for got_string in readlines()
-                       if got_string]
+            verbose_print(
+                'Enter strings for realmlist.wtf. EOF (ctrl+d) to finish',
+                args.verbosity,
+            )
+            strings = [
+                got_string.strip() for got_string in readlines() if got_string
+            ]
         new_entry = sets.add(name, strings)
         if new_entry and args.verbosity:
-            verbose_print('New entry for %s done: %s' % (name, new_entry),
-                          args.verbosity)
+            verbose_print(
+                'New entry for %s done: %s' % (name, new_entry), args.verbosity
+            )
     return 0
 
 
@@ -119,25 +130,29 @@ def _add(args):
 def _use(args):
     with RealmSettings(args.settings) as sets:
         while not os.path.exists(sets.realmlist):
-            if confirm_action('Path "%s" '
-                              'to "realmlist.wtf" is not exists. '
-                              'Change it? (y/n)' % sets.realmlist):
+            if confirm_action(
+                'Path "%s" '
+                'to "realmlist.wtf" is not exists. '
+                'Change it? (y/n)' % sets.realmlist
+            ):
                 sets.realmlist = input('Enter new path to "realmlist.wtf": ')
             else:
                 return 1
         name = args.name
         if sets.have_realm(name):
             if sets.use(name):
-                verbose_print('Realm "%s" used for realmlist' % name,
-                              args.verbosity)
+                verbose_print(
+                    'Realm "%s" used for realmlist' % name, args.verbosity
+                )
             else:
-                verbose_print('Failed to use realm "%s" '
-                              'for %s file' % (name, sets.realmlist),
-                              args.verbosity)
+                verbose_print(
+                    'Failed to use realm "%s" '
+                    'for %s file' % (name, sets.realmlist),
+                    args.verbosity,
+                )
                 return 1
         else:
-            verbose_print('Realm %s not found to use.' % name,
-                          args.verbosity)
+            verbose_print('Realm %s not found to use.' % name, args.verbosity)
             return 1
     return 0
 
@@ -148,11 +163,13 @@ def _show(args):
         names = args.names if args.names else readlines()
         for name in names:
             if sets.have_realm(name) and sets.show(name):
-                verbose_print('Realm %s marked as non-hidden' % name,
-                              args.verbosity)
+                verbose_print(
+                    'Realm %s marked as non-hidden' % name, args.verbosity
+                )
             else:
-                info_print('Realm %s not found to show.' % name,
-                           args.verbosity)
+                info_print(
+                    'Realm %s not found to show.' % name, args.verbosity
+                )
     return 0
 
 
@@ -162,11 +179,13 @@ def _hide(args):
         names = args.names if args.names else readlines()
         for name in names:
             if sets.have_realm(name) and sets.hide(name):
-                verbose_print('Realm %s marked as hidden' % name,
-                              args.verbosity)
+                verbose_print(
+                    'Realm %s marked as hidden' % name, args.verbosity
+                )
             else:
-                info_print('Realm %s not found to hide.' % name,
-                           args.verbosity)
+                info_print(
+                    'Realm %s not found to hide.' % name, args.verbosity
+                )
     return 0
 
 
@@ -181,115 +200,116 @@ def _remove(args):
                     confirmed = True
                 else:
                     if args.verbosity and confirm_action(
-                        'Confirm removing realm "%s"?(y/n)' % name):
+                        'Confirm removing realm "%s"?(y/n)' % name
+                    ):
                         confirmed = True
                 if confirmed and sets.remove(name):
-                    verbose_print('Realm %s removed.' % name,
-                                  args.verbosity)
+                    verbose_print('Realm %s removed.' % name, args.verbosity)
             else:
-                info_print('Realm %s not found to remove.' % name,
-                           args.verbosity)
+                info_print(
+                    'Realm %s not found to remove.' % name, args.verbosity
+                )
     return 0
 
 
 def parse_cli_args():
-    
     parser = ArgumentParser(
-        description = __doc__,
-        allow_abbrev = False,
-        epilog = __copyright__,
+        description=__doc__,
+        allow_abbrev=False,
+        epilog=__copyright__,
     )
-    parser.set_defaults(func = _default)
-    
+    parser.set_defaults(func=_default)
+
     parser.add_argument(
         '--version',
-        action = 'version',
-        version = f'%(prog)s {__version__}',
+        action='version',
+        version=f'%(prog)s {__version__}',
     )
     parser.add_argument(
         '-v',
         '--verbose',
-        dest = 'verbosity',
-        action = 'count',
-        default = 0,
-        help = 'increase verbosity level. Quiet by default.',
+        dest='verbosity',
+        action='count',
+        default=0,
+        help='increase verbosity level. Quiet by default.',
     )
     parser.add_argument(
         '-s',
         '--settings',
-        default = DEF_SETTINGS_FILENAME,
-        help = '''use settings from specified .json file. 
-        File "%s" is used as default.''' % DEF_SETTINGS_FILENAME,
+        default=DEF_SETTINGS_FILENAME,
+        help="""use settings from specified .json file. 
+        File "%s" is used as default."""
+        % DEF_SETTINGS_FILENAME,
     )
-    
+
     ## COMMANDS
     subs = parser.add_subparsers(
-        title = 'Commands',
-        dest = 'command',
-        description = 'main settings interface',
+        title='Commands',
+        dest='command',
+        description='main settings interface',
     )
-    
+
     # List
     command = subs.add_parser(
         'list',
-        help = 'list realms',
+        help='list realms',
     )
     command.add_argument(
         '-l',
         '--long',
-        action = 'store_true',
-        default = False,
-        help = 'list full information, not only names',
+        action='store_true',
+        default=False,
+        help='list full information, not only names',
     )
     cmdgroup = command.add_mutually_exclusive_group()
     cmdgroup.add_argument(
         '--all',
-        action = 'store_true',
-        default = False,
-        help = 'list all realms, including hidden',
+        action='store_true',
+        default=False,
+        help='list all realms, including hidden',
     )
     cmdgroup.add_argument(
         '--hidden',
-        action = 'store_true',
-        default = False,
-        help = 'list hidden realms only',
+        action='store_true',
+        default=False,
+        help='list hidden realms only',
     )
-    command.set_defaults(func = _list)
-    
+    command.set_defaults(func=_list)
+
     # Add
     command = subs.add_parser(
         'add',
-        help = 'add new realm or change existing',
+        help='add new realm or change existing',
     )
     command.add_argument(
         '-f',
         '--force',
-        action = 'store_true',
-        default = False,
-        help = 'force change existing realm, no prompt',
+        action='store_true',
+        default=False,
+        help='force change existing realm, no prompt',
     )
     command.add_argument(
         'name',
-        help = 'name for new or existing realm to add or change.',
+        help='name for new or existing realm to add or change.',
     )
     command.add_argument(
         'strings',
-        nargs = '*',
-        help = '''strings for realmlist.wtf file. 
-        Asked from standard input if omit.''',
+        nargs='*',
+        help="""strings for realmlist.wtf file. 
+        Asked from standard input if omit.""",
     )
-    command.set_defaults(func = _add)
-    
+    command.set_defaults(func=_add)
+
     # Use
     command = subs.add_parser(
         'use',
-        help = 'use realm by name',
+        help='use realm by name',
     )
     command.add_argument(
         'name',
-        help = 'name of chosen realm. Use "list" to choose',
+        help='name of chosen realm. Use "list" to choose',
     )
-    command.set_defaults(func = _use)
+    command.set_defaults(func=_use)
 
     # Show
     command = subs.add_parser(
@@ -301,45 +321,51 @@ def parse_cli_args():
         nargs='*',
         help='name of hidden realm to show. Use "list" to choose',
     )
-    command.set_defaults(func = _show)
-    
+    command.set_defaults(func=_show)
+
     # Hide
     command = subs.add_parser(
         'hide',
-        help = 'hide realms',
+        help='hide realms',
     )
     command.add_argument(
         'names',
-        nargs = '*',
-        help = 'name of realm to hide. Use "list" to choose',
+        nargs='*',
+        help='name of realm to hide. Use "list" to choose',
     )
-    command.set_defaults(func = _hide)
-    
+    command.set_defaults(func=_hide)
+
     # Remove
     command = subs.add_parser(
         'remove',
-        help = 'remove realms',
+        help='remove realms',
     )
     command.add_argument(
         '-f',
         '--force',
-        action = 'store_true',
-        default = False,
-        help = 'force deletion operation, no prompt',
+        action='store_true',
+        default=False,
+        help='force deletion operation, no prompt',
     )
     command.add_argument(
         'names',
-        nargs = '*',
-        help = 'name of realm to permanently delete. Use "list" to choose',
+        nargs='*',
+        help='name of realm to permanently delete. Use "list" to choose',
     )
-    command.set_defaults(func = _remove)
+    command.set_defaults(func=_remove)
 
     return parser.parse_args()
 
 
-if __name__ == '__main__':
+def main() -> int:
     args = parse_cli_args()
-    if __debug__: print(f'{vars(args) = }')
+    if __debug__:
+        print(f'{vars(args) = }')
     result = args.func(args)
-    if __debug__: print(f'{result = }')
-    sys.exit(result)
+    if __debug__:
+        print(f'{result = }')
+    return result
+
+
+if __name__ == '__main__':
+    sys.exit(main())
