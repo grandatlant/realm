@@ -19,8 +19,8 @@ __all__ = [
     'RealmSettings',
 ]
 
+import os
 import sys
-from os.path import abspath, join as path_join, exists as path_exists
 
 import json
 from enum import Enum
@@ -51,11 +51,11 @@ class DefaultFactory:
 
     @staticmethod
     def filename():
-        return path_join('.', 'DefaultSettings.json')
+        return os.path.join(os.path.curdir, 'DefaultSettings.json')
 
     @staticmethod
     def realmlist():
-        return path_join('..', 'Data', 'enUS', 'realmlist.wtf')
+        return os.path.join(os.path.pardir, 'Data', 'enUS', 'realmlist.wtf')
 
     @staticmethod
     def realms():
@@ -72,8 +72,7 @@ class DefaultFactory:
         return entry
 
 
-# @runtime_checkable
-class ItemAccessBase(Protocol):
+class ItemAccessBase(ABC):
     """Item access interface"""
 
     __slots__ = ()
@@ -97,6 +96,10 @@ class ItemAccessBase(Protocol):
     @abstractmethod
     def __iter__(self, /):
         return DefaultFactory.realms().__iter__()
+
+    @abstractmethod
+    def __len__(self, /):
+        return DefaultFactory.realms().__len__()
 
     @abstractmethod
     def get(self, name, default=None, /):
@@ -172,6 +175,9 @@ class SettingsData(ItemAccessBase):
     def __iter__(self):
         return self.realms.__iter__()
 
+    def __len__(self, /):
+        return self.realms.__len__()
+
     def get(self, name, default=None):
         return self.realms.get(name, default)
 
@@ -237,8 +243,7 @@ class BaseSettings(ItemAccessBase):
         return None
 
 
-@runtime_checkable
-class Saveable(Protocol):
+class Saveable(ABC):
     """save-load interface"""
 
     @abstractmethod
@@ -359,16 +364,16 @@ class CoreSettings(SettingsData, BaseSettings, Saveable):
 
     def use(self, name):
         """Push realm`s 'strings' to 'realmlist.wtf' file"""
-        if self.have_realm(name) and path_exists(self.realmlist):
+        if self.have_realm(name) and os.path.exists(self.realmlist):
             try:
                 with open(self.realmlist, 'wt') as rlfile:
                     for line in self.realm_strings(name):
                         rlfile.write(f'{line}\r\n')
             except OSError as ex:
                 print(
-                    f"Can't use realm '{self.name}' "
-                    "for realmlist file '{self.realmlist}': "
-                    '{ex}',
+                    f'Can`t use realm {self.name!r} '
+                    f'for realmlist file {self.realmlist!r}: '
+                    f'{ex!r}',
                     file=self.errfile,
                 )
                 return False
@@ -377,7 +382,7 @@ class CoreSettings(SettingsData, BaseSettings, Saveable):
         return False
 
     def load(
-        self, /, loader: Optional[Loader] = None, *args, **kwargs
+        self, /, loader: Optional[Loader] = None, *args, **kwargs,
     ) -> bool:
         """Load settings from file.
         Return value - True if succeed, False othervise"""
@@ -395,7 +400,7 @@ class CoreSettings(SettingsData, BaseSettings, Saveable):
         return False
 
     def save(
-        self, /, dumper: Optional[Dumper] = None, *args, **kwargs
+        self, /, dumper: Optional[Dumper] = None, *args, **kwargs,
     ) -> bool:
         """Save current settings to file.
         Return value - True if succeed, False othervise"""
